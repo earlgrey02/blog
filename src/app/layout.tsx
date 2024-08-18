@@ -2,11 +2,8 @@ import type { ReactNode } from 'react'
 import type { Metadata } from 'next'
 import Head from './head'
 import Header from '@/component/Header'
-import ChakraProvider from '@/lib/chakra/component/ChakraProvider'
-import { Box, ColorModeScript } from '@chakra-ui/react'
-import config from '@/lib/chakra/config'
-import VercelProvider from '@/lib/vercel/component/VercelProvider'
-import ReduxProvider from '@/lib/redux/component/ReduxProvider'
+import { Box } from '@chakra-ui/react'
+import RootProvider from '@/component/RootProvider'
 
 interface Props {
   children: ReactNode
@@ -36,17 +33,12 @@ const Layout = ({ children }: Props) => {
     <html>
       <Head />
       <body>
-        <VercelProvider>
-          <ReduxProvider>
-            <ChakraProvider>
-              <ColorModeScript initialColorMode={config.initialColorMode} />
-              <Box position="relative" maxWidth="50rem" minHeight="100vh" margin="0 auto" padding="2.5rem 1.4rem">
-                <Header />
-                {children}
-              </Box>
-            </ChakraProvider>
-          </ReduxProvider>
-        </VercelProvider>
+        <RootProvider>
+          <Box position="relative" maxWidth="50rem" minHeight="100vh" margin="0 auto" padding="2.5rem 1.4rem">
+            <Header />
+            {children}
+          </Box>
+        </RootProvider>
       </body>
     </html>
   )
