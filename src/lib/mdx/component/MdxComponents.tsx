@@ -17,38 +17,21 @@ const mdxComponents = (id: number): MDXComponents => ({
     </Text>
   ),
   h1: ({ children }) => (
-    <Text
-      as="h1"
-      marginTop="1.2rem"
-      marginBottom="0.4rem"
-      fontSize="1.3rem"
-      fontWeight={600}>
+    <Text as="h1" marginTop="1.2rem" marginBottom="0.4rem" fontSize="1.3rem" fontWeight={600}>
       {children}
     </Text>
   ),
   h2: ({ children }) => (
-    <Text
-      as="h2"
-      marginTop="1.2rem"
-      marginBottom="0.4rem"
-      fontSize="1.1rem"
-      fontWeight={600}>
+    <Text as="h2" marginTop="1.2rem" marginBottom="0.4rem" fontSize="1.1rem" fontWeight={600}>
       {children}
     </Text>
   ),
   a: ({ href, children }) => (
-    <Link
-      as={NextLink}
-      href={href as string}
-      target="_blank"
-      color="teal.500"
-      fontWeight={600}>
+    <Link as={NextLink} href={href} target="_blank" color="teal.500" fontWeight={600}>
       {children}
     </Link>
   ),
-  img: ({ src, alt }) => (
-    <Image src={`/posts/${id}/${src}`} alt={alt as string} />
-  )
+  img: ({ src, alt }) => <Image src={`/posts/${id}/${src}`} alt={alt ?? 'Unknown image'} />
 })
 
 export default mdxComponents

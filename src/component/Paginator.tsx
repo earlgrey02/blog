@@ -1,17 +1,18 @@
-import React, { useCallback } from 'react'
+import { useCallback } from 'react'
 import { Button, Flex } from '@chakra-ui/react'
-import { useDispatch, useSelector } from 'react-redux'
+import { useDispatch } from 'react-redux'
 import { setPage } from '@/lib/redux/reducer/postSlice'
 import { ArrowIcon } from '@/lib/chakra/component/icons'
+import useSelector from '@/lib/redux/hook/useSelector'
 
 interface Props {
   total: number
 }
 
-const maxPageNumbers = 5
+const maxPageNumber = 5
 
 const Paginator = ({ total }: Props) => {
-  const page = useSelector((store: Store) => store.post.page)
+  const page = useSelector(store => store.post.page)
   const dispatch = useDispatch()
 
   const paginationHandler = useCallback((page: number) => {
@@ -19,15 +20,12 @@ const Paginator = ({ total }: Props) => {
   }, [])
 
   const renderPageIndexes = useCallback(() => {
-    let start = Math.max(0, page - Math.floor(maxPageNumbers / 2))
-    let end = Math.min(total, start + maxPageNumbers)
+    let start = Math.max(0, page - Math.floor(maxPageNumber / 2))
+    const end = Math.min(total, start + maxPageNumber)
 
-    if (end - start < maxPageNumbers) start = Math.max(0, end - maxPageNumbers)
+    if (end - start < maxPageNumber) start = Math.max(0, end - maxPageNumber)
 
-    return Array.from(
-      { length: maxPageNumbers },
-      (_, index) => start + index
-    ).map(index => (
+    return Array.from({ length: maxPageNumber }, (_, index) => start + index).map(index => (
       <Button
         size="sm"
         key={index}
@@ -40,17 +38,11 @@ const Paginator = ({ total }: Props) => {
 
   return (
     <Flex alignItems="center" gap="0.4rem">
-      <Button
-        padding={0}
-        isDisabled={page === 0}
-        onClick={() => paginationHandler(page - 1)}>
+      <Button padding={0} isDisabled={page === 0} onClick={() => paginationHandler(page - 1)}>
         <ArrowIcon />
       </Button>
       {renderPageIndexes()}
-      <Button
-        padding={0}
-        isDisabled={page === total - 1}
-        onClick={() => paginationHandler(page + 1)}>
+      <Button padding={0} isDisabled={page === total - 1} onClick={() => paginationHandler(page + 1)}>
         <ArrowIcon transform="rotate(180deg)" />
       </Button>
     </Flex>

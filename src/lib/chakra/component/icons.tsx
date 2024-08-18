@@ -1,4 +1,5 @@
-import { Icon, IconProps } from '@chakra-ui/icon'
+import type { IconProps } from '@chakra-ui/icon'
+import { Icon } from '@chakra-ui/icon'
 import { ChevronLeftIcon as ArrowIcon } from '@chakra-ui/icons'
 
 const HomeIcon = (props: IconProps) => (

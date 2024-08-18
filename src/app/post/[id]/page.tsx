@@ -1,7 +1,7 @@
 import { allPosts } from 'contentlayer/generated'
 import { notFound } from 'next/navigation'
 import { getPostById } from '@/module/post/api'
-import { Metadata } from 'next'
+import type { Metadata } from 'next'
 import { useMDXComponent } from 'next-contentlayer/hooks'
 import mdxComponents from '@/lib/mdx/component/MdxComponents'
 import { Divider, Flex, Text } from '@chakra-ui/react'
@@ -48,10 +48,9 @@ const Page = ({ params }: Props) => {
   )
 }
 
-const generateStaticParams = async () =>
-  allPosts.map(post => ({ id: post.id.toString() }))
+const generateStaticParams = () => allPosts.map(post => ({ id: post.id.toString() }))
 
-const generateMetadata = async ({ params }: Props): Promise<Metadata> => {
+const generateMetadata = ({ params }: Props): Metadata => {
   const post = getPostById(params.id)
   if (!post) notFound()
 

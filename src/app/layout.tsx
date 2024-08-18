@@ -1,5 +1,5 @@
-import { ReactNode } from 'react'
-import { Metadata } from 'next'
+import type { ReactNode } from 'react'
+import type { Metadata } from 'next'
 import Head from './head'
 import Header from '@/component/Header'
 import ChakraProvider from '@/lib/chakra/component/ChakraProvider'
@@ -40,12 +40,7 @@ const Layout = ({ children }: Props) => {
           <ReduxProvider>
             <ChakraProvider>
               <ColorModeScript initialColorMode={config.initialColorMode} />
-              <Box
-                position="relative"
-                maxWidth="50rem"
-                minHeight="100vh"
-                margin="0 auto"
-                padding="2.5rem 1.4rem">
+              <Box position="relative" maxWidth="50rem" minHeight="100vh" margin="0 auto" padding="2.5rem 1.4rem">
                 <Header />
                 {children}
               </Box>

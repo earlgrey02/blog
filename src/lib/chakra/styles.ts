@@ -1,5 +1,6 @@
-import { mode, Styles } from '@chakra-ui/theme-tools'
-import { SystemStyleFunction } from '@chakra-ui/react'
+import type { Styles } from '@chakra-ui/theme-tools'
+import { mode } from '@chakra-ui/theme-tools'
+import type { SystemStyleFunction } from '@chakra-ui/react'
 
 const codeStyle: SystemStyleFunction = props => ({
   span: {

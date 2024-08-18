@@ -9,10 +9,7 @@ const Header = () => {
   const path = usePathname()
 
   return (
-    <Flex
-      justifyContent="space-between"
-      alignItems="center"
-      marginBottom="3rem">
+    <Flex justifyContent="space-between" alignItems="center" marginBottom="3rem">
       <Flex
         alignItems="center"
         gap={{

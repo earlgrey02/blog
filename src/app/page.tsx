@@ -1,13 +1,5 @@
 'use client'
-import {
-  Button,
-  Divider,
-  Flex,
-  Link,
-  List,
-  ListItem,
-  Text
-} from '@chakra-ui/react'
+import { Button, Divider, Flex, Link, List, ListItem, Text } from '@chakra-ui/react'
 import Motion from '@/lib/motion/component/Motion'
 import Image from 'next/image'
 import { GitHubIcon } from '@/lib/chakra/component/icons'
@@ -21,11 +13,7 @@ const Page = () => {
 
   return (
     <Flex flexDirection="column">
-      <Motion
-        variants={fadeIn}
-        initial="initial"
-        animate="animate"
-        transition={{ duration: 1 }}>
+      <Motion variants={fadeIn} initial="initial" animate="animate" transition={{ duration: 1 }}>
         <Flex
           gap={{
             base: '1.2rem',
@@ -86,12 +74,7 @@ const Page = () => {
               </Text>
             </Flex>
             <Flex>
-              <Button
-                as={NextLink}
-                marginLeft={-2}
-                padding={0}
-                href="https://github.com/earlgrey02"
-                target="_blank">
+              <Button as={NextLink} marginLeft={-2} padding={0} href="https://github.com/earlgrey02" target="_blank">
                 <GitHubIcon
                   boxSize={{
                     base: '1.6rem',

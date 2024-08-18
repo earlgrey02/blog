@@ -1,16 +1,16 @@
 'use client'
 import Motion from '@/lib/motion/component/Motion'
 import React, { memo, useMemo, useState } from 'react'
-import { useSelector } from 'react-redux'
 import { getPosts } from '@/module/post/api'
 import { toPages } from '@/lib/util/pagination'
 import { Flex, List, ListItem, Text } from '@chakra-ui/react'
 import { fadeIn, fadeInRight } from '@/lib/motion/animations'
 import PostItem from '@/component/PostItem'
 import Paginator from '@/component/Paginator'
+import useSelector from '@/lib/redux/hook/useSelector'
 
 const Page = () => {
-  const { tags, page } = useSelector((store: Store) => store.post)
+  const { tags, page } = useSelector(store => store.post)
   const [delayChildren, setDelayChildren] = useState(0.5)
 
   const pages = useMemo(
@@ -18,11 +18,7 @@ const Page = () => {
       toPages(
         tags.length === 0
           ? getPosts()
-          : getPosts().filter(
-              post =>
-                tags.filter(tag => post.tags.includes(tag)).length ===
-                tags.length
-            )
+          : getPosts().filter(post => tags.filter(tag => post.tags.includes(tag)).length === tags.length)
       ),
     [tags]
   )

@@ -15,11 +15,7 @@ const Image = ({ src, alt }: Props) => {
   const loadingCompleteHandler = useCallback(() => setIsLoading(false), [])
 
   return (
-    <Flex
-      position="relative"
-      justifyContent="center"
-      alignItems="center"
-      marginY="2rem">
+    <Flex position="relative" justifyContent="center" alignItems="center" marginY="2rem">
       {isLoading && (
         <Motion
           position="absolute"

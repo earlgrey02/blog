@@ -1,5 +1,5 @@
 'use client'
-import { Variants } from 'framer-motion'
+import type { Variants } from 'framer-motion'
 import { keyframes } from '@emotion/react'
 
 const spin = keyframes`

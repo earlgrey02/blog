@@ -1,7 +1,5 @@
 'use client'
 import type { Post } from 'contentlayer/generated'
-import { useRouter } from 'next/navigation'
-import { useSelector } from 'react-redux'
 import { Flex, Link, Text } from '@chakra-ui/react'
 import NextLink from 'next/link'
 import TagItem from '@/component/TagItem'
@@ -11,9 +9,6 @@ interface Props {
 }
 
 const PostItem = ({ post }: Props) => {
-  const router = useRouter()
-  const tags = useSelector((store: Store) => store.post.tags)
-
   return (
     <Link
       as={NextLink}
