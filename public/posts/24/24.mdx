@@ -1,0 +1,129 @@
+---
+title: Mapped Type을 통한 타입 확장
+description: TypeScript에서 유연하게 컴포넌트를 확장하는 방법
+date: 2024-07-16
+tags: [TypeScript, React, React Native]
+---
+이번 글은 TypeScript의 맵드 타입(Mapped Type)에 대한 글입니다.
+
+<br />
+
+이번에 React Native로 프론트엔드를 개발하면서 폰트(Font)를 사용하게 되었는데요.
+이때, 저는 기존의 `Text`가 특정 폰트를 기본 폰트로 가지도록 컴포넌트를 확장하고 싶었습니다.
+
+# Text
+
+기본적으로 사용될 폰트는 `NanumSquare_acL`, `NanumSquare_acB` 등 이름에서 볼 수 있듯이, 굵기를 포함하고 있습니다.
+그래서 저는 `fontWeight`에 따라서 기본 폰트가 달라지도록 `Text`를 구현하려고 했습니다.
+
+```ts title="index.d.ts" showLineNumbers {3, 6}
+export interface TextStyle extends TextStyleIOS, TextStyleAndroid, ViewStyle {
+    color?: ColorValue | undefined;
+    fontFamily?: string | undefined;
+    fontSize?: number | undefined;
+    fontStyle?: "normal" | "italic" | undefined;
+    fontWeight?: "normal" | "bold" | "100" | "200" | "300" | "400" | "500" | "600" | "700" | "800" | "900" | undefined;
+    ...
+}
+```
+
+문제는 `style`의 타입인 `TextStyle`에 이미 `fontWeight`가 정의되어 있다는 점이었습니다.
+
+<br />
+
+제가 구현할 `Text`는 `fontWeight`로 `light`, `normal`, `bold`, `extra` 중에서만 선택할 수 있도록 구현해야 하는데요.
+하지만 기존의 `fontWeight`와 제가 정의할 `fontWeight`는 서로 호환이 불가능한 프로퍼티들이라 교차 타입을 사용하면 `never`가 되버립니다.
+
+<br />
+
+물론 하드 코딩으로 어떻게든 구현할 수는 있지만, 해당 방법은 적절하다고 생각하지 않았습니다.
+이렇게 고민하던 와중, 저는 TypeScript의 기능을 활용하기로 했습니다.
+
+# Mapped Type
+
+TypeScript에서는 특정 타입의 모든 프로퍼티를 순회하며 기존 타입을 확장하는 맵드 타입이 있는데요.
+
+```ts showLineNumber
+{ [ P in K ]: T }
+```
+
+맵드 타입은 위와 같이 인덱스 시그니처(Index Signature)와 `in`을 통해 사용할 수 있습니다.
+`K`는 순회하려는 리터럴 타입(Literal Type)의 집합이며, `P`는 현재 순회하는 리터럴 타입입니다.
+
+```ts showLineNumber
+type A = {
+  property1?: number,
+  property2?: string
+}
+
+type B = { readonly [ P in keyof A ]-?: A[P] }
+/*
+type B = {
+  readonly property1: number,
+  readonly property2: string
+}
+*/
+```
+
+위와 같이 맵드 타입을 통해 기존 타입을 유연하게 확장할 수 있습니다.
+또한 맵드 타입에서는 단순히 타입이나 `readonly` 등의 키워드 뿐만 아니라 삼항 연산자나 인덱스 참조를 사용할 수 있습니다.
+
+# Replace
+
+앞서 설명드렸듯이, 저는 `TextProps`에서 `style`을 수정할 예정인데요.
+바로 맵드 타입을 활용해 `TextProps`를 확장할 수도 있지만, 향후 재사용성을 위해 따로 유틸리티 타입을 정의해서 사용할 생각입니다.
+
+```ts title="util.d.ts" showLineNumbers
+type Replace<T, R extends { [K in keyof T]?: unknown }> = {
+  [P in keyof T]: P extends keyof R ? R[P] : T[P]
+}
+```
+
+저는 맵드 타입을 통해 특정 타입의 프로퍼티를 수정할 수 있는 타입인 `Replace`를 구현했습니다.
+`Replace`의 타입 매개변수인 `R`은 `T`의 프로퍼티들을 선택적으로 정의하도록 했습니다.
+그 다음, `T`의 프로퍼티들을 순회하며 `R`에 포함되어 있는 프로퍼티는 `R`에서 정의한 타입을 따르도록, 포함되어 있지 않은 프로퍼티는 기존의 `T`에 정의된 타입을 따르도록 합니다.
+
+# 컴포넌트 확장
+
+이제 해당 유틸리티 타입을 통해 `TextProps`를 확장해 보겠습니다.
+
+```ts title="Text.tsx" showLineNumbers {1}
+type Props = Replace<TextProps, { style: Replace<TextStyle, { fontWeight?: keyof typeof fonts }> }>
+
+const weights = {
+  light: 300,
+  normal: 400,
+  bold: 700,
+  extra: 800
+} as const
+
+const fonts: Record<keyof typeof weights, string> = {
+  light: 'NanumSquare_acL',
+  normal: 'NanumSquare_acR',
+  bold: 'NanumSquare_acB',
+  extra: 'NanumSquare_acEB'
+} as const
+```
+
+`TextProps` 내부에 있는 `style`, `style`의 타입인 `TextStyle` 내부에 있는 `fontWeight`의 타입을 바꿔야 하므로 `Replace`를 중첩해서 사용했습니다.
+이제 `fontWeight`를 `fonts`의 키 값으로 받을 수 있습니다.
+
+```tsx title="Text.tsx" showLineNumbers {11-12}
+const Text = ({ style, ...props }: Props) => {
+  const isDefault = style?.fontFamily === undefined
+
+  return (
+    <RNText
+      {...props}
+      style={{
+        ...style,
+        fontWeight: isDefault ? undefined : weights[style.fontWeight ?? 'normal'],
+        fontFamily: isDefault ? fonts[style?.fontWeight ?? 'normal'] : style.fontFamily
+      }}
+    />
+  )
+}
+```
+
+마지막으로 제가 구현한 타입을 기반으로 커스텀 컴포넌트인 `Text`를 구현했습니다.
+`Text`는 `fontFamily`가 주어지지 않는 경우에만 기본 폰트를 사용하는데, 이때 사용되는 기본 폰트는 `fontWeight`에 따라 달라지도록 구현했습니다.

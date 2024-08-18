@@ -111,7 +111,7 @@ etcdctl snapshot save <snapshot_path>
 ```console
 etcdctl snapshot save --cacert=/etc/kubernetes/pki/etcd/ca.crt --cert=/etc/kubernetes/pki/etcd/server.crt --key=/etc/kubernetes/pki/etcd/server.key /opt/snapshot.db
 ```
-```console /snapshot.db/
+```console
 /opt > ls
 cni  containerd  snapshot.db
 ```
@@ -138,7 +138,7 @@ etcdctl snapshot restore <snapshot_path>
 ```console
 etcdctl snapshot restore --data-dir /var/lib/etcd-from-backup /opt/snapshot-pre-boot.db
 ```
-```console /etcd-from-backup/
+```console
 /var/lib > ls
 apt       cni         dbus    dpkg  etcd-from-backup  git  kubelet  misc        pam       private  rancher  systemd  vim
 buildkit  containerd  docker  etcd  gems              k0s  man-db   PackageKit  polkit-1  python   sudo     ucf

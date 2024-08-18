@@ -1,0 +1,188 @@
+---
+title: Version Catalog를 통한 버전 관리
+description: Gradle에서 버전을 관리하는 방법
+date: 2024-08-13
+tags: [Kotlin, Gradle]
+---
+이번 글은 Gradle의 버전 카탈로그(Version Catalog)를 통한 버전 관리에 대한 글입니다.
+
+<br />
+
+이번에 멀티 모듈로 백엔드 개발을 하면서 여러 모듈에 존재하는 의존성을 관리하는데 어려움을 느꼈었습니다.
+특히 여러 모듈에 중복되는 의존성들의 경우, 버전이 바뀌면 모두 바꿔야 한다는 점에서 고민이 많았는데요.
+그래서 버전을 하나의 파일로 관리하는 방법을 찾고 있었습니다.
+
+# ext
+
+제일 간단한 버전 관리 방법으로 `ext` 변수를 사용하는 방법이 있습니다.
+
+```kotlin title="build.gradle" showLineNumbers
+ext {
+    kotlinVersion = "1.9.24"
+}
+```
+```kotlin title="build.gradle.kts" showLineNumbers
+ext {
+    set("kotlinVersion", "1.9.24")
+}
+```
+
+`ext` 블록 내에서 변수를 정의하면 되는데요.
+단순히 변수를 선언하면 되는 Groovy DSL과 달리 Kotlin DSL에서는 `set()`을 통해 변수를 초기화 해야 합니다.
+
+```kotlin title="build.gradle" showLineNumbers
+dependencies {
+    ...
+    testImplementation "io.kotest:kotest-runner-junit5:${ext.kotlinVersion}"
+    testImplementation "io.kotest:kotest-assertions-core:${ext.kotlinVersion}"
+}
+```
+```kotlin title="build.gradle.kts" showLineNumbers
+dependencies {
+    ...
+    testImplementation("io.kotest:kotest-runner-junit5:${ext["kotlinVersion"]}")
+    testImplementation("io.kotest:kotest-assertions-core:${ext["kotlinVersion"]}")
+}
+```
+
+변수를 직접 사용하기 위해서는 `ext`를 참조하면 됩니다.
+Kotlin DSL의 경우에는 변수 이름을 하드 코딩해야 한다는 단점이 있습니다.
+
+# buildSrc
+
+`buildSrc`는 Gradle 빌드 이전에 컴파일되는 디렉토리입니다.
+일반적으로 커스텀 플러그인을 구현하는 등의 작업에 해당 디렉토리를 활용할 수 있는데요.
+버전 관리의 경우, 버전 정보를 상수로 가진 클래스를 `buildSrc` 내에 만들어서 사용할 수 있습니다.
+
+```kotlin title="Version.kt" showLineNumbers
+object Version {
+    const val KOTLIN = "1.9.24"
+}
+```
+
+`buildSrc` 하위에 버전에 대한 정보를 가진 `Version`을 구현합니다.
+`Version`에는 의존성에 대한 버전들을 `static` 상수로 가지도록 했습니다.
+
+```kotlin title="build.gradle.kts" showLineNumbers
+dependencies {
+    ...
+    testImplementation("io.kotest:kotest-runner-junit5:${Version.KOTLIN}")
+    testImplementation("io.kotest:kotest-assertions-core:${Version.KOTLIN}")
+}
+```
+
+`buildSrc` 내의 클래스는 빌드 이전에 컴파일되므로 IDE(Integrated Development Environment)의 자동 완성 기능을 사용할 수 있습니다.
+해당 방법은 `ext`와 달리 변수명을 하드 코딩할 필요가 없다는 장점을 가지고 있으나, 버전을 변경하면 캐시를 무시하고 전체를 다시 빌드한다는 단점이 있습니다.
+
+# Version Catalog
+
+버전 카탈로그는 앞서 설명드린 방법들의 단점을 모두 보완한 방법입니다.
+`ext`와 달리 변수명 등을 하드 코딩할 필요가 없으며, `buildSrc`와 달리 버전을 변경해도 전체가 아닌 영향을 받는 모듈만 다시 빌드하게 됩니다.
+
+```toml title="libs.versions.toml" showLineNumbers
+[versions]
+kotest = "5.9.1"
+
+[libraries]
+kotest-junit = { group = "io.kotest", name = "kotest-runner-junit5", version.ref = "kotest" }
+kotest-assertion = { group = "io.kotest", name = "kotest-runner-junit5", version.ref = "kotest" }
+
+[bundles]
+kotest = ["kotest-junit", "kotest-assertion"]
+```
+
+버전 카탈로그는 `gradle` 디렉토리 하위의 `libs.versions.toml`에 작성하게 되는데요.
+일반적으로 파일 내에서는 버전과 의존성을 따로 관리하며, 여러 의존성을 묶어 하나의 번들(Bundle)로도 관리할 수 있습니다.
+
+```kotlin title="build.gradle.kts" showLineNumbers
+dependencies {
+    ...
+    testImplementation(libs.kotest.junit)
+    testImplementation(libs.kotest.assertion)
+}
+```
+```kotlin title="build.gradle.kts" showLineNumbers
+dependencies {
+    ...
+    testImplementation(rootProject.libs.bundles.kotest)
+}
+```
+
+`build.gradle.kts`에서는 `libs`를 통해 버전 카탈로그에 접근할 수 있습니다.
+후자의 경우는 번들을 사용해서 의존성을 가져왔습니다.
+
+# 버전 카탈로그 적용
+
+앞서 설명드린 방법 중에는 현재로서는 버전 카탈로그가 최선이라 생각해 해당 방법으로 버전을 관리하기로 했습니다.
+Gradle 7.4 이후부터는 별도의 설정 없이 버전 카탈로그를 사용할 수 있습니다.
+
+```toml title="libs.versions.toml" showLineNumbers
+[versions]
+kotlin = "1.9.24"
+spring-boot = "3.3.2"
+spring-dependency-management = "1.1.6"
+...
+
+[libraries]
+spring-log4j2 = { group = "org.springframework.boot", name = "spring-boot-starter-log4j2" }
+r2dbc-mysql = { group = "io.asyncer", name = "r2dbc-mysql", version.ref = "r2dbc-mysql" }
+kotlin-logging = { group = "io.github.oshai", name = "kotlin-logging-jvm", version.ref = "kotlin-logging" }
+...
+
+[plugins]
+kotlin = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }
+spring-dependency-management = { id = "io.spring.dependency-management", version.ref = "spring-dependency-management" }
+...
+
+[bundles]
+logging = ["spring-log4j2", "kotlin-logging"]
+kotest = ["kotest-junit", "kotest-assertion", "kotest-extension"]
+mockk = ["mockk", "spring-mockk"]
+restdocs = ["spring-restdocs", "restdocs-openapi", "restdocs-openapi-test"]
+```
+
+저는 라이브러리 뿐만 아니라 플러그인에 대해서도 버전 카탈로그를 사용하기로 했습니다.
+그래서 모든 의존성을 `libs.versions.toml`에 작성해두었으며, 함께 사용되는 의존성들은 하나의 번들로 구성했습니다.
+
+```kotlin title="build.gradle.kts" showLineNumbers
+plugins {
+    alias(libs.plugins.kotlin)
+    alias(libs.plugins.spring.boot)
+    alias(libs.plugins.spring.dependency.management)
+    ...
+}
+
+subprojects {
+    apply {
+        plugin(rootProject.libs.plugins.kotlin)
+        plugin(rootProject.libs.plugins.spring.boot)
+        plugin(rootProject.libs.plugins.spring.dependency.management)
+        ...
+    }
+
+    dependencies {
+        ...
+        implementation(rootProject.libs.bundles.logging)
+        testImplementation(rootProject.libs.bundles.kotest)
+        testImplementation(rootProject.libs.bundles.mockk)
+        testImplementation(rootProject.libs.bundles.restdocs)
+    }
+}
+...
+```
+
+`build.gradle.kts`에서 기존의 하드 코딩하던 부분들을 `libs`를 사용하도록 수정했습니다.
+참고로 `subProjects` 블록 내에선 `rootProject`로 `libs`를 참조해야 합니다.
+
+```kotlin title="build.gradle.kts" showLineNumbers
+dependencies {
+    ...
+    testFixturesImplementation(libs.bundles.kotest)
+    testFixturesImplementation(libs.bundles.mockk)
+    testFixturesImplementation(libs.bundles.restdocs)
+}
+```
+
+서브 모듈에서는 루트 모듈에서 사용했던 방식처럼 `libs`를 사용하면 됩니다.
+이렇게 라이브러리 의존성을 하드 코딩할 필요가 없어지고 버전을 `build.gradle.kts`와 독립적인 파일에서 모두 관리함으로써 유지보수성을 향상시킬 수 있습니다.
