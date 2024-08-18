@@ -1,7 +1,7 @@
 'use client'
 import NextImage from 'next/image'
 import { useCallback, useState } from 'react'
-import Motion from '../motion/Motion'
+import Motion from '../../motion/component/Motion'
 import { Flex } from '@chakra-ui/react'
 import { fadeIn, spin } from '@/lib/motion/animations'
 

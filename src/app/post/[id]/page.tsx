@@ -1,9 +1,9 @@
 import { allPosts } from 'contentlayer/generated'
 import { notFound } from 'next/navigation'
-import { getPostById } from '@/modules/post/api'
+import { getPostById } from '@/module/post/api'
 import { Metadata } from 'next'
 import { useMDXComponent } from 'next-contentlayer/hooks'
-import mdxComponents from '@/lib/mdx/MdxComponents'
+import mdxComponents from '@/lib/mdx/component/MdxComponents'
 import { Divider, Flex, Text } from '@chakra-ui/react'
 
 interface Props {

@@ -8,11 +8,11 @@ import {
   ListItem,
   Text
 } from '@chakra-ui/react'
-import Motion from '@/lib/motion/Motion'
+import Motion from '@/lib/motion/component/Motion'
 import Image from 'next/image'
-import { GitHubIcon } from '@/lib/chakra/icons'
+import { GitHubIcon } from '@/lib/chakra/component/icons'
 import NextLink from 'next/link'
-import { getPosts } from '@/modules/post/api'
+import { getPosts } from '@/module/post/api'
 import PostItem from '@/component/PostItem'
 import { fadeIn, fadeInRight } from '@/lib/motion/animations'
 

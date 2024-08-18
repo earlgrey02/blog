@@ -2,11 +2,11 @@ import { ReactNode } from 'react'
 import { Metadata } from 'next'
 import Head from './head'
 import Header from '@/component/Header'
-import ChakraProvider from '@/lib/chakra/ChakraProvider'
+import ChakraProvider from '@/lib/chakra/component/ChakraProvider'
 import { Box, ColorModeScript } from '@chakra-ui/react'
 import config from '@/lib/chakra/config'
-import VercelProvider from '@/lib/vercel/VercelProvider'
-import ReduxProvider from '@/redux/ReduxProvider'
+import VercelProvider from '@/lib/vercel/component/VercelProvider'
+import ReduxProvider from '@/lib/redux/component/ReduxProvider'
 
 interface Props {
   children: ReactNode

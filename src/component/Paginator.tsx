@@ -1,8 +1,8 @@
 import React, { useCallback } from 'react'
 import { Button, Flex } from '@chakra-ui/react'
 import { useDispatch, useSelector } from 'react-redux'
-import { setPage } from '@/redux/reducers/postSlice'
-import { ArrowIcon } from '@/lib/chakra/icons'
+import { setPage } from '@/lib/redux/reducer/postSlice'
+import { ArrowIcon } from '@/lib/chakra/component/icons'
 
 interface Props {
   total: number

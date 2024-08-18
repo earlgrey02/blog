@@ -1,6 +1,6 @@
 'use client'
 import { Button, Flex } from '@chakra-ui/react'
-import { ArrowIcon, HomeIcon } from '@/lib/chakra/icons'
+import { ArrowIcon, HomeIcon } from '@/lib/chakra/component/icons'
 import ColorModeSwitch from '@/component/ColorModeSwitch'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
