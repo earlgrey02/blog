@@ -1,0 +1,400 @@
+---
+title: Coroutine에서의 Dynamic Proxy
+description: 일시 중지 함수에 동적 프록시를 적용해 Bean으로 등록하기
+date: 2024-08-20
+tags: [Kotlin, Spring, Coroutine]
+---
+이번 글은 코루틴(Coroutine)에서의 동적 프록시(Dynamic Proxy)에 대한 글입니다.
+
+<br />
+
+이번에 Spring WebFlux 환경에서 Redis를 사용하다가 불편함을 겪었는데요.
+Spring Data에서는 리액티브 환경에서의 `RedisRepository`를 지원하지 않아 엔티티마다 반복적인 코드를 작성해야 했습니다.
+
+```kotlin title="RefreshTokenRepository.kt" showLineNumbers
+@Repository
+class RefreshTokenRepository(
+    private val redisTemplate: ReactiveRedisTemplate<String, String>
+) {
+    suspend fun findByKey(key: String): RefreshToken? =
+        redisTemplate.opsForValue()
+            .get(key)
+            .awaitSingleOrNull()
+            .let {
+                RefreshToken(
+                    id = key,
+                    content = it
+                )
+            }
+
+    suspend fun save(refreshToken: RefreshToken): RefreshToken =
+        refreshToken.apply {
+            redisTemplate.opsForValue()
+                .set(key, content)
+                .awaitSingle()
+        }
+
+    suspend fun save(refreshToken: RefreshToken, expire: Duration): RefreshToken =
+        refreshToken.apply {
+            redisTemplate.opsForValue()
+                .set(key, content, expire)
+                .awaitSingle()
+        }
+
+    suspend fun deleteByKey(key: String): Boolean =
+        redisTemplate.opsForValue()
+            .delete(key)
+            .awaitSingle()
+}
+```
+
+`ReactiveRedisTemplate`은 엔티티마다 위와 같은 코드를 계속해서 작성해야 하는데요.
+특히 코루틴을 사용하는 경우에는 `awaitSingle()` 등의 확장 함수를 계속 호출해야 하는 불편함도 있습니다.
+
+<br />
+
+저는 기존의 Spring Data의 `RedisRepository`처럼 쿼리 메서드까지는 지원하지는 못하더라도 단순한 조회, 저장, 삭제 작업에 대해서는 지원을 해주는 기능을 구현하고 싶었습니다.
+
+# CoroutineRedisRepository
+
+```kotlin title="CoroutineRedisRepository.kt" showLineNumbers
+@NoRepositoryBean
+interface CoroutineRedisRepository<V, K> {
+    suspend fun findByKey(key: K): V?
+
+    suspend fun save(value: V): V
+
+    suspend fun save(value: V, ttl: Duration): V
+
+    suspend fun deleteByKey(key: String): Boolean
+}
+```
+
+그래서 기본적인 연산들을 코루틴 기반으로 제공하는 인터페이스를 만들었는데요.
+이제 `RedisRepository`처럼 해당 인터페이스를 상속받는 모든 인터페이스들을 자동으로 구현해주면 됩니다.
+
+# 인터페이스 스캔
+
+`ClassPathScanningCandidateComponentProvider`는 특정 패키지 하위부터 지정된 `TypeFilter`와 일치하는 클래스를 스캔하는 클래스입니다.
+`TypeFilter`의 구현체 중 `AssignableTypeFilter`를 통해 특정 인터페이스를 상속받은 클래스를 찾을 수 있습니다.
+
+```kotlin title="CoroutineRedisRepositoryScanner.kt" showLineNumbers {5, 9, 18, 22}
+class CoroutineRedisRepositoryScanner(
+    private val registry: BeanDefinitionRegistry
+) : ClassPathScanningCandidateComponentProvider(false) {
+    init {
+        addIncludeFilter(AssignableTypeFilter(CoroutineRedisRepository::class.java))
+    }
+
+    override fun isCandidateComponent(beanDefinition: AnnotatedBeanDefinition): Boolean =
+        super.isCandidateComponent(beanDefinition) || beanDefinition.metadata.isInterface
+
+    override fun findCandidateComponents(basePackage: String): MutableSet<BeanDefinition> =
+        super.findCandidateComponents(basePackage)
+            .onEach {
+                val beanDefinition = it as GenericBeanDefinition
+                val beanClassName = beanDefinition.beanClassName
+                val factoryBeanDefinition = GenericBeanDefinition()
+                    .apply {
+                        setBeanClass(CoroutineRedisRepositoryFactoryBean::class.java)
+                        constructorArgumentValues.addGenericArgumentValue(Class.forName(beanClassName))
+                    }
+
+                registry.registerBeanDefinition(beanClassName!!, factoryBeanDefinition)
+            }
+}
+```
+
+`CoroutineRedisRepository`를 상속받은 인터페이스들을 가져와 `BeanDefinitionRegistry`에 각 인터페이스의 구현체를 Bean으로 등록하는 `CoroutineRedisRepositoryScanner`를 구현했는데요.
+원래 `ClassPathScanningCandidateComponentProvider`는 클래스만 찾을 수 있도록 설계되었기 때문에 `isCandidateComponent()`를 오버라이딩해 인터페이스도 찾을 수 있도록 구현했습니다.
+실제 스캔을 수행하는 `findCandidateComponents()`에서는 `BeanDefinition`을 조작해 구현체를 `FactoryBean`을 통해 Bean으로 등록하는 작업을 수행합니다.
+
+```java title="FactoryBean.java" showLineNumbers
+public interface FactoryBean<T> {
+    @Nullable
+    T getObject() throws Exception;
+
+    @Nullable
+    Class<?> getObjectType();
+
+    default boolean isSingleton() {
+        return true;
+    }
+}
+```
+
+여기서 `FactoryBean`은 `private` 생성자나 동적 프록시 등을 이유로 인스턴스화가 어려운 클래스를 Bean으로 등록할 수 있도록 해주는 클래스입니다.
+실제로 Bean으로 등록되는 인스턴스는 `getObject()`가 반환하는 인스턴스입니다.
+제가 앞서 `CoroutineRedisRepositoryScanner`에서 `CoroutineRedisRepositoryFactoryBean`을 통해 구현체를 Bean으로 등록한 이유는 구현체를 동적 프록시를 통해 구현했기 때문입니다.
+클래스 정보를 미리 알아낼 수 없어 인스턴스화가 힘든 프록시는 `FactoryBean`을 통해 Bean으로 등록해야 합니다.
+
+```kotlin title="CoroutineRedisRepositoryFactoryBean.kt" showLineNumbers
+class CoroutineRedisRepositoryFactoryBean<T : CoroutineRedisRepository<*, *>>(
+    private val repositoryType: Class<T>
+) : FactoryBean<T> {
+    @Autowired
+    private lateinit var redisTemplate: ReactiveRedisTemplate<String, String>
+
+    @Autowired
+    private lateinit var objectMapper: ObjectMapper
+
+    override fun getObject(): T =
+        implementInterface(repositoryType, getInvocationHandler()) as T
+
+    override fun getObjectType(): Class<T> = repositoryType
+
+    private fun getInvocationHandler(): InvocationHandler =
+        CoroutineRedisRepositoryInvocationHandler(
+            (repositoryType.genericInterfaces[0] as ParameterizedType)
+                .actualTypeArguments
+                .first() as Class<*>,
+            redisTemplate,
+            objectMapper
+        )
+
+    private fun implementInterface(interfaceType: Class<*>, interceptor: MethodInterceptor): Any =
+        Proxy.newProxyInstance(
+            repositoryType.classLoader,
+            arrayOf(repositoryType),
+            getInvocationHandler()
+        ) as T
+}
+```
+
+프록시를 구현하는데 사용된 `Proxy`의 `newProxyInstance`는 프록시에 대한 클래스 로더와 프록시가 상속 받을 인터페이스, `InvocationHandler`를 인자로 받습니다.
+프록시가 사용할 인터페이스의 `Class`는 사전에 `CoroutineRedisRepositoryScanner`에서 `addGenericArgumentValue()`를 통해 `CoroutineRedisRepositoryFactoryBean`의 인자로 전달 받았습니다.
+
+# 프록시 구현
+
+이제 `InvocationHandler`를 통해 프록시의 메서드들을 구현하면 되는데, 문제가 하나 있었습니다.
+
+```java title="InvocationHandler.java" showLineNumbers
+public interface InvocationHandler {
+    public Object invoke(Object proxy, Method method, Object[] args)
+        throws Throwable;
+    ...
+```
+
+`InvocationHandler`의 `invoke()`는 일시 중지 함수가 아니기에 코루틴을 사용할 수 없습니다.
+문제는 외부에서 호출할 `CoroutineRedisRepository`의 메서드들은 모두 일시 중지 함수로 정의되어 있고 메서드 내에서도 `awaitSingle()` 등의 일시 중지 함수를 호출해야 하는데요.
+그렇다고 이벤트 루프를 사용하는 Spring WebFlux에서 `runBlocking()`을 사용하는 것은 적절하지 않은 방법이라고 생각했습니다.
+그래서 일시 중지 함수와 `runBlocking()` 없이 코루틴을 사용할 수 있는 방법을 찾기로 했습니다.
+
+## Continuation
+
+사실 코루틴의 작동 원리를 생각하면 어려운 문제는 아니었습니다.
+
+```kotlin title="CoroutineTest.kt" showLineNumbers
+class CoroutineTest : AnnotationSpec() {
+    @Test
+    suspend fun test() {
+        delay(1000)
+        delay(1000)
+    }
+}
+```
+```java title="CoroutineTest.class" showLineNumbers {4, 18, 30, 35-37}
+public final class CoroutineTest extends AnnotationSpec {
+   @Test
+   @Nullable
+   public final Object test(@NotNull Continuation $completion) {
+      Object $continuation;
+      label27: {
+         if ($completion instanceof <undefinedtype>) {
+            $continuation = (<undefinedtype>)$completion;
+            if ((((<undefinedtype>)$continuation).label & Integer.MIN_VALUE) != 0) {
+               ((<undefinedtype>)$continuation).label -= Integer.MIN_VALUE;
+               break label27;
+            }
+         }
+
+         $continuation = new ContinuationImpl($completion) {
+            // $FF: synthetic field
+            Object result;
+            int label;
+
+            @Nullable
+            public final Object invokeSuspend(@NotNull Object $result) {
+               this.result = $result;
+               this.label |= Integer.MIN_VALUE;
+               return CoroutineTest.this.test((Continuation)this);
+            }
+         };
+      }
+
+      Object $result = ((<undefinedtype>)$continuation).result;
+      Object var4 = IntrinsicsKt.getCOROUTINE_SUSPENDED();
+      switch (((<undefinedtype>)$continuation).label) {
+         case 0:
+            ResultKt.throwOnFailure($result);
+            ((<undefinedtype>)$continuation).label = 1;
+            if (DelayKt.delay(1000L, (Continuation)$continuation) == var4) {
+               return var4;
+            }
+            break;
+         case 1:
+            ResultKt.throwOnFailure($result);
+            break;
+         case 2:
+            ResultKt.throwOnFailure($result);
+            return Unit.INSTANCE;
+         default:
+            throw new IllegalStateException("call to 'resume' before 'invoke' with coroutine");
+      }
+
+      ((<undefinedtype>)$continuation).label = 2;
+      if (DelayKt.delay(1000L, (Continuation)$continuation) == var4) {
+         return var4;
+      } else {
+         return Unit.INSTANCE;
+      }
+   }
+}
+```
+
+코루틴은 CPS(Continuation Passing Style)로 구현되어 있습니다.
+이때, 코루틴은 `label` 등의 일시 중지 지점까지의 상태를 저장하는 `Continuation`을 State Machine으로 사용합니다.
+실제로 바이트 코드를 보면 함수의 인자로 `Continuation`이 추가된 것을 확인할 수 있는데요.
+`COROUTINE_SUSPENDED`이 반환되면 현재 루틴이 일시 중지되며, 이후 `Continuation`의 `resumeWith()`가 호출되면 `Continuation`에 저장된 상태를 바탕으로 루틴이 재개됩니다.
+
+<br />
+
+이제 이러한 작동 방식을 `suspend` 키워드 없이 직접 구현하면 됩니다.
+
+```kotlin title="CoroutineRedisRepositoryInvocationHandler.kt" showLineNumbers {7-8, 45, 48}
+class CoroutineRedisRepositoryInvocationHandler(
+    private val entityClass: Class<*>,
+    private val redisTemplate: ReactiveRedisTemplate<String, String>,
+    private val objectMapper: ObjectMapper
+) : InvocationHandler {
+    override fun invoke(proxy: Any, method: Method, args: Array<*>): Any =
+        with(args.last() as Continuation<Any?>) {
+            CoroutineScope(context).launch {
+                runCatching {
+                    when (method.name) {
+                        "findByKey" -> {
+                            redisTemplate.opsForValue()
+                                .get(args[0].toString())
+                                .awaitSingleOrNull()
+                                ?.let { objectMapper.readValue(it, entityClass) }
+                        }
+                        "save" -> {
+                            args[0]!!.also {
+                                when (args.size - 1) {
+                                    1 -> {
+                                        redisTemplate.opsForValue()
+                                            .set(it.getKey(), objectMapper.writeValueAsString(it))
+                                            .awaitSingle()
+                                    }
+                                    2 -> {
+                                        redisTemplate.opsForValue()
+                                            .set(
+                                                it.getKey(),
+                                                objectMapper.writeValueAsString(it),
+                                                args[1] as Duration
+                                            )
+                                            .awaitSingle()
+                                    }
+                                    else -> throw NotImplementedError()
+                                }
+                            }
+                        }
+                        "deleteByKey" -> {
+                            redisTemplate.opsForValue()
+                                .delete(args[0].toString())
+                                .awaitSingle()
+                        }
+                        else -> throw NotImplementedError()
+                    }
+                }.run(::resumeWith)
+            }
+
+            COROUTINE_SUSPENDED
+        }
+
+    private fun Any.getKey() =
+        entityClass.declaredFields
+            .first { it.isAnnotationPresent(Key::class.java) }
+            .apply { isAccessible = true }
+            .get(this)
+            .toString()
+}
+```
+
+`CoroutineRedisRepositoryInvocationHandler`에서는 `CoroutineRedisRepository`의 모든 메서드를 구현하게 됩니다.
+구체적으로 호출된 메서드가 무엇인지 알기 위해 메서드의 이름과 인자에 따라 분기를 만들었습니다.
+
+<br />
+
+또한 실제 호출되는 메서드는 일시 중지 함수이므로 마지막 인자인 `Continuation`을 가져와서 `Continuation`의 `CoroutineContext`를 통해 새로운 `CoroutineScope`를 만들었습니다.
+여기서 중요한 부분은 `resumeWith()`를 호출하는 부분과 `COROUTINE_SUSPENDED`를 반환하는 부분인데요.
+`awaitSingle()` 등의 모든 작업이 끝나기 전에는 `COROUTINE_SUSPENDED`를 반환하고 작업이 끝나면 `resumeWith()`를 호출해 반환 값을 전달함과 동시에 함수를 재개시키도록 했습니다.
+
+# 전처리
+
+이제 지금까지 구현한 `CoroutineRedisRepositoryFactoryBean`을 Bean으로 등록하는 `CoroutineRedisRepositoryScanner`가 Bean의 생성이 시작되기 전에 수행되도록 해야 합니다.
+이런 경우에는 Bean의 메타 정보를 읽은 직후에 호출되는 `BeanFactoryPostProcessor`를 활용하면 됩니다.
+
+```java title="BeanFactoryPostProcessor.java" showLineNumbers
+@FunctionalInterface
+public interface BeanFactoryPostProcessor {
+    void postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory) throws BeansException;
+}
+```
+
+`BeanFactoryPostProcessor`에서는 `ConfigurableListableBeanFactory`를 통해 Bean에 대한 메타 정보인 `BeanDefinition`을 조회할 수 있는데요.
+저는 새로운 `BeanDefinition`을 등록하는 것이기 때문에 `BeanDefinition`을 조회 뿐만 아니라 등록하고 삭제할 수 있는 `BeanDefinitionRegistry`을 사용할 것입니다.
+
+```java title="DefaultListableBeanFactory.java" showLineNumbers
+public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFactory implements ConfigurableListableBeanFactory, BeanDefinitionRegistry, Serializable {
+    ...
+}
+```
+
+`ConfigurableListableBeanFactory`의 구현체인 `DefaultListableBeanFactory`는 `BeanDefinitionRegistry` 또한 상속받고 있기 때문에 형변환이 가능합니다.
+
+```kotlin title="CoroutineRedisRepositoryPostProcessor.kt" showLineNumbers
+@Component
+class CoroutineRedisRepositoryPostProcessor : BeanFactoryPostProcessor {
+    override fun postProcessBeanFactory(beanFactory: ConfigurableListableBeanFactory) {
+        CoroutineRedisRepositoryScanner(beanFactory as BeanDefinitionRegistry)
+            .findCandidateComponents("com.familidge.infrastructure")
+    }
+}
+```
+
+앞서 `CoroutineRedisRepositoryScanner`의 `findCandidateComponents()`에서 `CoroutineRedisRepository`의 구현체에 대한 `BeanDefinition`을 `BeanDefinitionRegistry`에 등록하도록 구현했기 때문에
+`CoroutineRedisRepositoryPostProcessor`는 단순히 `CoroutineRedisRepositoryScanner`에게 `BeanDefinitionRegistry`를 전달하고 `findCandidateComponents()`를 호출하기만 하면 됩니다.
+
+# 테스트
+
+```kotlin title="RefreshTokenRepository.kt" showLineNumbers
+@Repository
+interface RefreshTokenRepository : CoroutineRedisRepository<RefreshToken, String>
+```
+```console
+2024-08-21 00:57:49.180 DEBUG [main] o.s.b.f.s.DefaultListableBeanFactory: Creating shared instance of singleton bean 'com.familidge.infrastructure.domain.user.repository.RefreshTokenRepository'
+```
+
+`CoroutineRedisRepository`를 상속받은 인터페이스가 Bean으로 등록되는 것을 확인할 수 있습니다.
+
+```kotlin title="RefreshTokenRepositoryTest.kt" showLineNumbers
+@SpringBootTest
+class RefreshTokenRepositoryTest : AnnotationSpec() {
+    @Autowired
+    private lateinit var refreshTokenRepository: RefreshTokenRepository
+
+    @Test
+    suspend fun test() {
+        val token = RefreshToken(
+            id = "test",
+            content = "test"
+        )
+
+        refreshTokenRepository.save(token)
+        refreshTokenRepository.findByKey("test").shouldNotBeNull() shouldBeEqual token
+    }
+}
+```
+
+실제로 메서드도 프록시에 의해 정상적으로 작동하는 것도 확인할 수 있습니다.

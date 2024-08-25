@@ -4,7 +4,7 @@ description: 헥사고날 아키텍처에 멀티 모듈 도입하기
 date: 2024-08-08
 tags: [Kotlin, Spring]
 ---
-이번 글은 멀티 모듈 기반 헥사고날 아키텍처를 구성한 경험에 대한 글입니다.
+이번 글은 멀티 모듈을 기반으로 헥사고날 아키텍처를 구성한 경험에 대한 글입니다.
 
 <br />
 
@@ -115,11 +115,8 @@ fun deletePostById(id: String, authentication: DefaultJwtAuthentication): Mono<V
 ```
 
 기존의 Reactor를 사용한 경우, 여러 리액티브 연산자들로 인해 비즈니스 로직의 가독성이 안좋아지는 것을 경험해왔습니다.
-
-<br />
-
-앞서 설명드렸듯이, 도메인 주도 설계(Domain Driven Design, DDD)를 따르는 헥사고날 아키텍처에서는 비즈니스 로직이 외부 기술에 영향받지 않아야 합니다.
-하지만 Spring WebFlux를 기반으로 서버를 개발한다면 이러한 비동기 프로그래밍이 필수적으로 요구되는 상황이었습니다.
+앞서 설명드렸듯이, 도메인 주도 설계(Domain Driven Design, DDD)를 따르는 헥사고날 아키텍처에서는 비즈니스 로직이 외부 기술에 영향받지 않아야 하는데요.
+하지만 Spring WebFlux를 기반으로 서버를 개발한다면 비즈니스 로직에 Reactor 등의 비동기 프로그래밍이 필수적으로 존재할 수 밖에 없습니다.
 
 ```kotlin title="PostService.kt" showLineNumbers
 @Transactional
@@ -149,8 +146,8 @@ suspend fun deletePostById(id: String, authentication: DefaultJwtAuthentication)
 }
 ```
 
-그래서 Reactor보다는 명령형 프로그래밍 방식으로 비동기 처리가 가능한 코루틴이 비즈니스 로직의 가독성에 덜 영향을 주지 않을까 생각해서 코루틴을 도입하기로 했습니다.
-또한 코루틴은 기존의 명령형 프로그래밍을 사용하므로 Spring WebFlux에서 Spring Web MVC로 변경해도 비즈니스 로직에 큰 변화를 주지 않습니다.
+그래서 Reactor보다는 명령형 프로그래밍 방식으로 비동기 처리가 가능한 코루틴이 비즈니스 로직에 덜 영향을 주지 않을까 생각해서 코루틴을 도입하기로 했습니다.
+또한 코루틴은 명령형 프로그래밍을 사용하므로 Spring WebFlux에서 Spring Web MVC로 변경해도 비즈니스 로직에 큰 변화를 주지 않습니다.
 
 # 도메인 계층
 
@@ -194,7 +191,7 @@ data class UserEntity(
 ```kotlin title="build.gradle.kts" showLineNumbers {3}
 dependencies {
     implementation(project(":domain"))
-    compileOnly("org.springframework.boot:spring-boot")
+    implementation("org.springframework.boot:spring-boot")
 }
 ```
 
@@ -244,12 +241,12 @@ class SignUpService(
 
 ## 연산자 오버로딩
 
-비즈니스 로직을 작성하는 중에 저는 `CreateUserPort`에서 `createUser`를 호출하는 부분이 불필요하다고 생각헀습니다.
-포트는 단일 책임 원칙에 의해 하나의 책임만 가지며, 해당 책임에 대한 정보는 이미 포트에 이름에 명시되어 있는데요.
+비즈니스 로직을 작성하는 도중, 저는 `CreateUserPort`에서 `createUser()`를 호출하는 부분이 불필요하다고 생각헀습니다.
+포트는 단일 책임 원칙에 의해 하나의 책임만 가지며, 해당 책임에 대한 정보는 이미 포트 이름에 명시되어 있는데요.
 그럼 굳이 메서드를 호출해서 중복되는 의미를 만들 필요가 없다고 생각했습니다.
 그래서 이 부분은 연산자 오버로딩을 통해 해결했습니다.
 
-```kotlin title="CreateUserPort.kt" showLineNumber {2}
+```kotlin title="CreateUserPort.kt" showLineNumber
 fun interface CreateUserPort {
     suspend operator fun invoke(user: User): User
 }
@@ -274,7 +271,7 @@ class SignUpService(
 ```
 
 비즈니스 로직에서는 단순히 메서드를 호출하듯이 `CreateUserPort`를 사용하면 됩니다.
-확실히 이전 코드와 달리 불필요하게 중복되는 의미도 없어지고 코드도 간결해지는 것을 확인할 수 있습니다.
+확실히 이전 코드와 달리 불필요하게 중복되는 의미도 없어지고 코드도 간결해진 것을 확인할 수 있습니다.
 
 # 인프라 계층
 
