@@ -310,18 +310,23 @@ class GlobalExceptionHandler(
 
     override fun handle(exchange: ServerWebExchange, exception: Throwable): Mono<Void> =
         with(exchange.response) {
-            val errorResponse = ErrorResponse(exception)
+            val body = ErrorResponse(exception)
 
-            logger.error { "${exception::class.simpleName} at ${exception.stackTrace[0]}" }
+            logger.error { "${exception::class.simpleName}(\"${exception.message}\") at ${exception.stackTrace[0]}" }
 
-            statusCode = HttpStatusCode.valueOf(errorResponse.code)
+            headers.contentType = MediaType.APPLICATION_JSON
+            statusCode = HttpStatusCode.valueOf(body.code)
 
-            writeWith(
-                bufferFactory()
-                    .wrap(objectMapper.writeValueAsBytes(errorResponse))
-                    .toMono()
-            )
+            writeBody(body)
         }
+
+    private fun ServerHttpResponse.writeBody(body: Any): Mono<Void> =
+        writeWith(
+            Mono.just(
+                bufferFactory()
+                    .wrap(objectMapper.writeValueAsBytes(body))
+            )
+        )
 }
 ```
 
@@ -622,10 +627,11 @@ class MdcConfiguration {
         Hooks.resetOnEachOperator(mdcContextKey)
     }
 
-    @Order(Int.MIN_VALUE)
+    @Order(Ordered.HIGHEST_PRECEDENCE)
     @Bean
     fun mdcFilter(): MdcFilter = MdcFilter()
 
+    @Order(Ordered.HIGHEST_PRECEDENCE + 1)
     @Bean
     fun loggingFilter(): LoggingFilter = LoggingFilter()
 }

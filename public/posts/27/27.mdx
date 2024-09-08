@@ -1,10 +1,10 @@
 ---
 title: Coroutine에서의 Dynamic Proxy
-description: 일시 중지 함수에 동적 프록시를 적용해 Bean으로 등록하기
+description: 일시 중지 함수에 동적 프록시를 적용하는 방법
 date: 2024-08-20
 tags: [Kotlin, Spring, Coroutine]
 ---
-이번 글은 코루틴(Coroutine)에서의 동적 프록시(Dynamic Proxy)에 대한 글입니다.
+이번 글은 코루틴(Coroutine) 환경에서의 동적 프록시(Dynamic Proxy)에 대한 글입니다.
 
 <br />
 
@@ -53,7 +53,7 @@ class RefreshTokenRepository(
 
 <br />
 
-저는 기존의 Spring Data의 `RedisRepository`처럼 쿼리 메서드까지는 지원하지는 못하더라도 단순한 조회, 저장, 삭제 작업에 대해서는 지원을 해주는 기능을 구현하고 싶었습니다.
+그래서 저는 기존의 Spring Data의 `RedisRepository`처럼 조회, 저장, 삭제 작업에 대해서 자동으로 구현을 해주는 기능을 구현하고 싶었습니다.
 
 # CoroutineRedisRepository
 
@@ -70,12 +70,17 @@ interface CoroutineRedisRepository<V, K> {
 }
 ```
 
-그래서 기본적인 연산들을 코루틴 기반으로 제공하는 인터페이스를 만들었는데요.
-이제 `RedisRepository`처럼 해당 인터페이스를 상속받는 모든 인터페이스들을 자동으로 구현해주면 됩니다.
+우선 조회, 저장, 삭제 작업에 대한 명세를 코루틴 기반으로 제공하는 인터페이스를 만들었는데요.
+이제 `RedisRepository`처럼 해당 인터페이스를 상속받는 모든 인터페이스들을 자동으로 구현하도록 하면 됩니다.
 
-# 인터페이스 스캔
+# ClassPathScanningCandidateComponentProvider
 
-`ClassPathScanningCandidateComponentProvider`는 특정 패키지 하위부터 지정된 `TypeFilter`와 일치하는 클래스를 스캔하는 클래스입니다.
+`ReactiveRedisRepository`를 상속받는 인터페이스들을 모두 찾아야 하는데요.
+이렇게 특정 인터페이스나 클래스를 찾는데 사용하는 클래스로 `ClassPathScanningCandidateComponentProvider`가 있습니다.
+
+<br />
+
+`ClassPathScanningCandidateComponentProvider`는 특정 패키지 하위로부터 지정된 `TypeFilter`의 조건에 부합하는 클래스들을 조회합니다.
 `TypeFilter`의 구현체 중 `AssignableTypeFilter`를 통해 특정 인터페이스를 상속받은 클래스를 찾을 수 있습니다.
 
 ```kotlin title="CoroutineRedisRepositoryScanner.kt" showLineNumbers {5, 9, 18, 22}
@@ -125,7 +130,11 @@ public interface FactoryBean<T> {
 
 여기서 `FactoryBean`은 `private` 생성자나 동적 프록시 등을 이유로 인스턴스화가 어려운 클래스를 Bean으로 등록할 수 있도록 해주는 클래스입니다.
 실제로 Bean으로 등록되는 인스턴스는 `getObject()`가 반환하는 인스턴스입니다.
-제가 앞서 `CoroutineRedisRepositoryScanner`에서 `CoroutineRedisRepositoryFactoryBean`을 통해 구현체를 Bean으로 등록한 이유는 구현체를 동적 프록시를 통해 구현했기 때문입니다.
+
+# 프록시 구현
+
+제가 앞서 `CoroutineRedisRepositoryScanner`에서 `CoroutineRedisRepositoryFactoryBean`을 통해 구현체를 Bean으로 등록했는데요.
+굳이 `FactoryBean`을 사용한 이유는 해당 Bean을 동적 프록시를 통해 구현했기 때문입니다.
 클래스 정보를 미리 알아낼 수 없어 인스턴스화가 힘든 프록시는 `FactoryBean`을 통해 Bean으로 등록해야 합니다.
 
 ```kotlin title="CoroutineRedisRepositoryFactoryBean.kt" showLineNumbers
@@ -138,47 +147,46 @@ class CoroutineRedisRepositoryFactoryBean<T : CoroutineRedisRepository<*, *>>(
     @Autowired
     private lateinit var objectMapper: ObjectMapper
 
+    private val entityType by lazy {
+        (repositoryType.genericInterfaces[0] as ParameterizedType)
+            .actualTypeArguments
+            .first() as Class<*>
+    }
+
     override fun getObject(): T =
-        implementInterface(repositoryType, getInvocationHandler()) as T
-
-    override fun getObjectType(): Class<T> = repositoryType
-
-    private fun getInvocationHandler(): InvocationHandler =
-        CoroutineRedisRepositoryInvocationHandler(
-            (repositoryType.genericInterfaces[0] as ParameterizedType)
-                .actualTypeArguments
-                .first() as Class<*>,
-            redisTemplate,
-            objectMapper
+        ProxyFactory.getProxy(
+            repositoryType,
+            CoroutineRedisRepositoryInterceptor(
+                entityType = entityType,
+                redisTemplate = redisTemplate,
+                objectMapper = objectMapper
+            )
         )
 
-    private fun implementInterface(interfaceType: Class<*>, interceptor: MethodInterceptor): Any =
-        Proxy.newProxyInstance(
-            repositoryType.classLoader,
-            arrayOf(repositoryType),
-            getInvocationHandler()
-        ) as T
+    override fun getObjectType(): Class<T> = repositoryType
 }
 ```
 
-프록시를 구현하는데 사용된 `Proxy`의 `newProxyInstance`는 프록시에 대한 클래스 로더와 프록시가 상속 받을 인터페이스, `InvocationHandler`를 인자로 받습니다.
-프록시가 사용할 인터페이스의 `Class`는 사전에 `CoroutineRedisRepositoryScanner`에서 `addGenericArgumentValue()`를 통해 `CoroutineRedisRepositoryFactoryBean`의 인자로 전달 받았습니다.
+`CoroutineRedisRepositoryFactoryBean`에서는 `CoroutineRedisRepositoryScanner`에서 `addGenericArgumentValue()`를 통해 전달 받은 인터페이스와 함께 `ProxyFactory`로 프록시를 구현하게 됩니다.
+일반적으로 Spring에서는 인터페이스 상속 여부에 따라 JDK(Java Development Kit) 또는 CGLib(Code Generator Library)를 기반으로 프록시를 구현하게 되는데요.
+이 과정을 추상화해 제공하는 클래스가 `ProxyFactory`입니다.
 
-# 프록시 구현
+# CoroutineRedisRepositoryInterceptor
 
-이제 `InvocationHandler`를 통해 프록시의 메서드들을 구현하면 되는데, 문제가 하나 있었습니다.
+`ProxyFactory`를 통해 구현한 프록시에 대한 메서드 호출은 `MethodInterceptor`에 위임됩니다.
 
-```java title="InvocationHandler.java" showLineNumbers
-public interface InvocationHandler {
-    public Object invoke(Object proxy, Method method, Object[] args)
-        throws Throwable;
-    ...
+```java title="MethodInterceptor.java" showLineNumbers
+@FunctionalInterface
+public interface MethodInterceptor extends Interceptor {
+    @Nullable
+    Object invoke(@Nonnull MethodInvocation invocation) throws Throwable;
+}
 ```
 
-`InvocationHandler`의 `invoke()`는 일시 중지 함수가 아니기에 코루틴을 사용할 수 없습니다.
-문제는 외부에서 호출할 `CoroutineRedisRepository`의 메서드들은 모두 일시 중지 함수로 정의되어 있고 메서드 내에서도 `awaitSingle()` 등의 일시 중지 함수를 호출해야 하는데요.
-그렇다고 이벤트 루프를 사용하는 Spring WebFlux에서 `runBlocking()`을 사용하는 것은 적절하지 않은 방법이라고 생각했습니다.
-그래서 일시 중지 함수와 `runBlocking()` 없이 코루틴을 사용할 수 있는 방법을 찾기로 했습니다.
+문제는 `MethodInterceptor`의 `invoke()`는 일시 중지 함수가 아니기에 코루틴을 사용할 수 없다는 점입니다.
+외부에서 호출할 `CoroutineRedisRepository`의 메서드들은 모두 일시 중지 함수로 정의되어 있고 실제로 메서드 내에서 `awaitSingle()` 등의 일시 중지 함수를 호출해야 하는데요.
+그렇다고 `runBlocking()`이나 `GlobalScope`를 사용하는 것은 논블로킹이나 컨텍스트 관리 관점에서 적절하지 않은 방법이라고 생각했습니다.
+그래서 `suspend` 키워드 없이 코루틴을 사용할 수 있는 방법을 찾기로 했습니다.
 
 ## Continuation
 
@@ -261,74 +269,110 @@ public final class CoroutineTest extends AnnotationSpec {
 
 이제 이러한 작동 방식을 `suspend` 키워드 없이 직접 구현하면 됩니다.
 
-```kotlin title="CoroutineRedisRepositoryInvocationHandler.kt" showLineNumbers {7-8, 45, 48}
-class CoroutineRedisRepositoryInvocationHandler(
-    private val entityClass: Class<*>,
+```kotlin title="CoroutineRedisRepositoryProxy.kt" showLineNumbers
+@NoRepositoryBean
+class CoroutineRedisRepositoryProxy(
+    private val entityType: Class<*>,
     private val redisTemplate: ReactiveRedisTemplate<String, String>,
     private val objectMapper: ObjectMapper
-) : InvocationHandler {
-    override fun invoke(proxy: Any, method: Method, args: Array<*>): Any =
-        with(args.last() as Continuation<Any?>) {
-            CoroutineScope(context).launch {
-                runCatching {
-                    when (method.name) {
-                        "findByKey" -> {
-                            redisTemplate.opsForValue()
-                                .get(args[0].toString())
-                                .awaitSingleOrNull()
-                                ?.let { objectMapper.readValue(it, entityClass) }
-                        }
-                        "save" -> {
-                            args[0]!!.also {
-                                when (args.size - 1) {
-                                    1 -> {
-                                        redisTemplate.opsForValue()
-                                            .set(it.getKey(), objectMapper.writeValueAsString(it))
-                                            .awaitSingle()
-                                    }
-                                    2 -> {
-                                        redisTemplate.opsForValue()
-                                            .set(
-                                                it.getKey(),
-                                                objectMapper.writeValueAsString(it),
-                                                args[1] as Duration
-                                            )
-                                            .awaitSingle()
-                                    }
-                                    else -> throw NotImplementedError()
-                                }
-                            }
-                        }
-                        "deleteByKey" -> {
-                            redisTemplate.opsForValue()
-                                .delete(args[0].toString())
-                                .awaitSingle()
-                        }
-                        else -> throw NotImplementedError()
-                    }
-                }.run(::resumeWith)
-            }
+) : CoroutineRedisRepository<Any, String> {
+    override suspend fun findByKey(key: String): Any? =
+        redisTemplate.opsForValue()
+            .get(key)
+            .map { objectMapper.readValue(it, entityType) }
+            .awaitSingleOrNull()
 
-            COROUTINE_SUSPENDED
-        }
+    override suspend fun save(value: Any): Any =
+        redisTemplate.opsForValue()
+            .set(value.getKey(), objectMapper.writeValueAsString(value))
+            .thenReturn(value)
+            .awaitSingle()
+
+    override suspend fun save(value: Any, ttl: Duration): Any =
+        redisTemplate.opsForValue()
+            .set(value.getKey(), objectMapper.writeValueAsString(value), ttl.toJavaDuration())
+            .thenReturn(value)
+            .awaitSingle()
+
+    override suspend fun deleteByKey(key: String): Boolean =
+        redisTemplate.opsForValue()
+            .delete(key)
+            .awaitSingle()
 
     private fun Any.getKey() =
-        entityClass.declaredFields
+        entityType.declaredFields
             .first { it.isAnnotationPresent(Key::class.java) }
-            .apply { isAccessible = true }
+            .apply { setAccessible(true) }
             .get(this)
             .toString()
 }
 ```
 
-`CoroutineRedisRepositoryInvocationHandler`에서는 `CoroutineRedisRepository`의 모든 메서드를 구현하게 됩니다.
-구체적으로 호출된 메서드가 무엇인지 알기 위해 메서드의 이름과 인자에 따라 분기를 만들었습니다.
+우선 `CoroutineRedisRepository`의 모든 메서드를 구현한 `CoroutineRedisRepositoryProxy`를 구현했습니다.
 
-<br />
+```kotlin title="CoroutineUtil.kt" showLineNumbers
+internal fun <T> Continuation<T>.coroutineScope(block: suspend () -> T): Any =
+    with(CoroutineScope(context)) {
+        launch {
+            runCatching { block() }
+                .run(::resumeWith)
+        }
 
-또한 실제 호출되는 메서드는 일시 중지 함수이므로 마지막 인자인 `Continuation`을 가져와서 `Continuation`의 `CoroutineContext`를 통해 새로운 `CoroutineScope`를 만들었습니다.
-여기서 중요한 부분은 `resumeWith()`를 호출하는 부분과 `COROUTINE_SUSPENDED`를 반환하는 부분인데요.
-`awaitSingle()` 등의 모든 작업이 끝나기 전에는 `COROUTINE_SUSPENDED`를 반환하고 작업이 끝나면 `resumeWith()`를 호출해 반환 값을 전달함과 동시에 함수를 재개시키도록 했습니다.
+        COROUTINE_SUSPENDED
+    }
+```
+
+그 다음, 일반 함수에서도 `Continuation`을 통해 코루틴을 사용할 수 있도록 하는 `coroutineScope()`를 구현했습니다.
+`Continuation`의 `CoroutineContext`를 통해 새로운 `CoroutineScope`를 만들고, 내부에서 코루틴을 수행하는 동시에 `COROUTINE_SUSPENDED`를 반환합니다.
+코루틴이 끝나면 `resumeWith()`를 호출해 반환 값을 전달함과 동시에 함수를 재개시키도록 했습니다.
+
+```kotlin title="CoroutineRedisRepositoryInvocationHandler.kt" showLineNumbers {7-8, 45, 48}
+class CoroutineRedisRepositoryInterceptor(
+    private val entityType: Class<*>,
+    private val redisTemplate: ReactiveRedisTemplate<String, String>,
+    private val objectMapper: ObjectMapper
+) : MethodInterceptor {
+    private val repositoryProxy = CoroutineRedisRepositoryProxy(
+        entityType = entityType,
+        redisTemplate = redisTemplate,
+        objectMapper = objectMapper
+    )
+
+    override fun invoke(invocation: MethodInvocation): Any =
+        with(invocation) {
+            arguments.lastOrNull { it is Continuation<*> }
+                ?.let {
+                    (it as Continuation<Any?>)
+                        .coroutineScope { coInvoke(method.kotlinFunction!!, (arguments - it).toList()) }
+                }
+                ?: invoke(method.kotlinFunction!!, arguments.toList())
+        }
+
+    private suspend fun coInvoke(function: KFunction<*>, parameters: List<*>): Any? =
+        when (function.name) {
+            "findByKey" -> repositoryProxy.findByKey(parameters[0].toString())
+            "save" -> {
+                val value = parameters[0] as Any
+
+                when (parameters.size) {
+                    1 -> repositoryProxy.save(value)
+                    2 -> repositoryProxy.save(value, (parameters[1] as Long).milliseconds)
+                    else -> throw UnsupportedOperationException()
+                }
+            }
+            "deleteByKey" -> repositoryProxy.deleteByKey(parameters[0].toString())
+            else -> throw UnsupportedOperationException()
+        }
+
+    private fun invoke(function: KFunction<*>, parameters: List<*>): Flow<*> =
+        when (function.name) {
+            else -> throw UnsupportedOperationException()
+        }
+}
+
+```
+
+이제 `CoroutineRedisRepositoryInterceptor`에서는 일시 중지 함수의 마지막 인자로 주어지는 `Continuation`으로 코루틴 스코프를 만들고, 해당 스코프 내에서 `CoroutineRedisRepositoryProxy`의 메서드를 호출하면 됩니다.
 
 # 전처리
 
