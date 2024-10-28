@@ -9,8 +9,8 @@ tags: [Kotlin, Spring]
 <br />
 
 저는 항상 Java에서의 테스트 코드를 보고 복잡하다고 생각해왔습니다.
-`@Nested`와 함께 많은 내부 클래스로 중첩 테스트 구조를 나타내다 보니 코드가 복잡해지기 쉬웠습니다.
-저는 이러한 문제를 Kotlin에서 Kotlin DSL을 통해 개선하고 싶었습니다.
+특히 여러 테스트를 계층화할 때 `@Nested`와 함께 많은 내부 클래스를 사용하다 보니 코드가 복잡해지기 쉬웠습니다.
+그래서 저는 이러한 문제를 Kotlin DSL을 통해 개선하고자 했습니다.
 
 # Kotlin DSL
 
@@ -42,9 +42,9 @@ Given("챕터와 각각의 챕터에 속하는 퀴즈들이 존재하는 경우"
 
 # Kotest & Mockk
 
-Kotest는 Kotlin을 사용하는 테스트 프레임워크입니다.
-Kotest에서는 단순히 `@Test`나 `@Nested`를 사용해서 테스트 코드를 작성하는 것 외에 Given-When-Then 구조의 BDD(Behavior Driven Design) 또는 DCI(Describe-Context-It) 패턴을 Kotlin DSL로 사용할 수 있습니다.
-또한 Mockk는 Kotest처럼 Kotlin DSL을 통해 모의 객체를 설정하고 검증하는 모킹(Mocking) 프레임워크입니다.
+Kotest는 Kotlin 기반 테스트 프레임워크입니다.
+Kotest를 통해서 단순히 `@Test`나 `@Nested`를 사용해서 테스트 코드를 작성하는 것 외에도 Given-When-Then 구조의 BDD(Behavior Driven Design) 또는 DCI(Describe-Context-It) 패턴을 Kotlin DSL로 구현할 수 있습니다.
+Kotest와 함께 자주 사용되는 Mockk는 Kotest처럼 Kotlin DSL을 통해 모의 객체를 설정하고 검증하는 모킹(Mocking) 프레임워크입니다.
 
 ```kotlin title="build.gradle.kts" showLineNumbers
 dependencies {
@@ -66,8 +66,7 @@ class ProjectConfiguration : AbstractProjectConfig() {
 }
 ```
 
-앞서, Kotest에서 `@Autowired`를 사용하기 위해서는 `AbstractProjectConfig`을 통해 `SpringExtentsion`을 등록해야 합니다.
-`@Autowired`는 컨트롤러 테스트에 공통으로 사용되는 Spring REST Docs를 설정할때 사용합니다.
+참고로 Kotest에서 `@Autowired`를 사용하기 위해서는 `AbstractProjectConfig`을 통해 `SpringExtentsion`을 등록해야 합니다.
 
 ## 컨트롤러 테스트
 
@@ -89,9 +88,9 @@ abstract class ControllerTest : DescribeSpec() {
 }
 ```
 
-저희는 Spring WebFlux, Spring REST Docs를 사용하고 있으므로 Spring REST Docs가 설정된 `WebTestClient`를 포함한 `ControllerTest`를 구현했습니다.
+저희는 Spring WebFlux와 Spring REST Docs를 사용하고 있으므로 Spring REST Docs가 설정된 `WebTestClient`를 포함한 `ControllerTest`를 구현했습니다.
 컨트롤러 테스트는 DCI 패턴을 사용할 예정이므로 Kotest의 `DescribeSpec`을 상속받았습니다.
-앞으로 모든 컨트롤러 테스트 클래스들은 `ControllerTest`를 상속받기만 하면 됩니다.
+이후 모든 컨트롤러 테스트 클래스들은 `ControllerTest`를 상속받기만 하면 됩니다.
 
 ```kotlin title="describeSpec.kt" showLineNumbers
 abstract class DescribeSpec(body: DescribeSpec.() -> Unit = {}) : DslDrivenSpec(), DescribeSpecRootScope {
@@ -102,7 +101,6 @@ abstract class DescribeSpec(body: DescribeSpec.() -> Unit = {}) : DslDrivenSpec(
 ```
 
 `DescribeSpec`의 코드를 보면 확장 함수, 후행 람다 등의 전형적인 Kotlin DSL의 구현 방식을 가지고 있습니다.
-테스트 코드는 `DescribeSpec`의 생성자 내부나 `init` 블록 내부에 작성할 수 있습니다.
 
 ```kotlin title="QuizControllerTest.kt" showLineNumbers
 @WebFluxTest(QuizRouter::class, QuizHandler::class)
@@ -144,7 +142,7 @@ class QuizControllerTest : ControllerTest() {
 }
 ```
 
-우선 설명을 위해 Spring REST Docs와 관련된 코드들은 전부 생략했습니다.
+테스트 코드는 `DescribeSpec`의 생성자 내부나 `init` 블록 내부에 작성하게 됩니다.
 앞서 구현한 `ControllerTest`에서 `DescribeSpec`을 상속받았기 때문에 DCI 패턴을 사용할 수 있습니다.
 
 ```kotlin showLineNumbers
@@ -231,7 +229,7 @@ result.expectSubscription()
     .verifyComplete()
 ```
 
-Spring WebFlux에서는 서비스 계층에서 일반적으로 `Mono` 또는 `Flux` 같은 `Publisher`를 반환하므로 구독을 통해 검증을 해야 합니다.
+Spring WebFlux에서는 서비스 계층에서 `Mono` 또는 `Flux` 같은 `Publisher`를 반환하므로 구독을 통해 검증을 해야 합니다.
 그러므로 Mockk가 아닌 Reactor의 `StepVerifier`를 사용하기로 했습니다.
 
 ```kotlin showLineNumbers {2}
@@ -258,4 +256,4 @@ class BehaviorSpecGivenContainerScope(
 }
 ```
 
-참고로 Kotest는 코루틴 기반으로 작동하므로 추가적인 Couroutine 빌더 없이 코루틴 확장 함수를 사용할 수 있습니다.
+참고로 Kotest는 코루틴 기반으로 작동하므로 추가적인 코루틴 빌더 없이 코루틴 확장 함수를 사용할 수 있습니다.

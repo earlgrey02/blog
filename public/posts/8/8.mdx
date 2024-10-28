@@ -24,8 +24,8 @@ JVM에서 바이트 코드는 클래스 로더에 의해 런타임 데이터 영
 
 링킹 단계는 검증, 준비, 해석 단계로 세분화됩니다.
 검증 단계는 바이트 코드가 JLS(Java Language Specification)에 부합하는 지를 검사하는 단계로, 검증에 실패하는 경우에는 `VerifyError`가 발생합니다.
-그 다음, 준비 단계는 정적 변수에 대해 메모리를 할당하고 기본값으로 초기화하는 과정입니다.
-마지막으로 해석 단계는 이름 등의 심볼릭 참조(Symbolic Reference)를 물리적인 메모리 주소인  직접 참조(Direct Reference)로 변환하는 과정입니다.
+그 다음, 준비 단계는 정적 변수에 대해 메모리를 할당하고 기본 값으로 초기화하는 과정입니다.
+마지막으로 해석 단계는 이름 등의 심볼릭 참조(Symbolic Reference)를 물리적인 메모리 주소인 직접 참조(Direct Reference)로 변환하는 과정입니다.
 
 ## 초기화(Initialization)
 
@@ -37,17 +37,16 @@ JVM에서 바이트 코드는 클래스 로더에 의해 런타임 데이터 영
 
 ## 부트스트랩 클래스 로더(BootStrap Class Loader)
 
-부트스트랩 클래스 로더는 최상위 클래스 로더로, JVM 시작 시점에 실행되는 클래스 로더입니다.
-클래스 로더가 작동하기 위해 필요로 하는 `Object`, `Class`, `ClassLoder` 등의 클래스들을 포함한 필수적인 클래스들을 로드합니다.
+부트스트랩 클래스 로더는 최상위 클래스 로더로, 클래스 로더가 작동하기 위해 필요로 하는 `Object`, `Class`, `ClassLoder` 등의 클래스들을 포함한 필수적인 클래스들을 로드합니다.
 최상위 클래스 로더이므로 네이티브 코드로 작성되어 있습니다.
 
 ## 확장 클래스 로더(Extension Class Loader)
 
-확장 클래스 로더는 부트스트랩 클래스 로더의 하위 클래스 로더로, 일반적으로 `$JAVA_HOME/lib/ext` 디렉토리에 있는 JDK 확장 클래스들을 로드하는 클래스 로더입니다.
+확장 클래스 로더는 부트스트랩 클래스 로더의 하위 클래스 로더로, 일반적으로 `$JAVA_HOME/lib/ext` 디렉토리에 있는 JDK(Java Development Kit) 확장 클래스들을 로드하는 클래스 로더입니다.
 
 ## 시스템 클래스 로더(System Class Loader)
 
-시스템 클래스 로더는 최하위 클래스 로더로, JVM 실행 시 클래스 패스(Class Path) 경로 하위의 클래스들을 로드하는 클래스 로더입니다.
+애플리케이션 클래스 로더(Application Class Loader)라고도 불리는 시스템 클래스 로더는 최하위 클래스 로더로, JVM 실행 시 클래스 패스(Class Path) 경로 하위의 클래스들을 로드하는 클래스 로더입니다.
 
 ```java title="Main.java" showLineNumbers
 class Main {
@@ -66,8 +65,8 @@ java.lang.Object의 클래스 로더: null
 Main의 클래스 로더: jdk.internal.loader.ClassLoaders$AppClassLoader@251a69d7
 ```
 
-네이티브 코드로 작성된 부트스트랩 클래스 로더는 Java에서는 `null`로 표시됩니다.
-`Main`의 경우는 애플리케이션 클래스 로더(Application Class Loader)라고도 불리는 시스템 클래스 로더에 의해 로드된 것을 확인할 수 있습니다.
+`Main`의 경우는 시스템 클래스 로더에 의해 로드된 것을 확인할 수 있습니다.
+참고로 네이티브 코드로 작성된 부트스트랩 클래스 로더는 Java에서는 `null`로 표시됩니다.
 
 # 클래스 로더의 원칙
 
@@ -128,7 +127,7 @@ public abstract class ClassLoader {
 
 클래스 로더는 클래스를 한번에 전부 로드하지 않고 동적으로 로드합니다.
 이때, 로드하는 시점에 따라서 동적 로딩의 종류가 나뉩니다.
-설명에 앞서 클래스 로드 과정을 출력하기 위해 VM 옵션으로 `-Xlog:class+load=info`를 사용했습니다.
+설명에 앞서, 클래스 로드 과정을 출력하기 위해 VM 옵션으로 `-Xlog:class+load=info`를 사용했습니다.
 
 ## 로드타임 동적 로딩(Load-time Dynamic Loading)
 
@@ -229,7 +228,7 @@ public class Singleton {
 
 위 코드는 유일성 원칙을 활용한 싱글톤 패턴 구현 코드입니다.
 실제로 싱글톤 인스턴스가 생성되는 시점은 `getInstance()`를 최초로 호출하는 시점이자 `SingletonHolder`가 로드되는 시점입니다.
-이때, 클래스를 로드하는 과정이 클래스 로더의 유일성 원칙에 의해 한번만 수행되게 되므로 Thread-safe하게 싱글톤 인스턴스를 생성할 수 있습니다.
+이때, 클래스를 로드하는 과정이 클래스 로더의 유일성 원칙에 의해 한번만 수행되므로 Thread-safe하게 싱글톤 인스턴스를 생성할 수 있습니다.
 
 ## JDBC
 
@@ -267,4 +266,4 @@ public class Driver extends NonRegisteringDriver implements java.sql.Driver {
 
 MySQL의 `Driver`를 예시로 보자면, 정적 블록 내에서 `registerDriver()`를 호출하는 것을 확인할 수 있습니다.
 정적 블록은 클래스가 로드되는 시점에 클래스 로더의 유일성 원칙에 의해 Thread-safe하게 실행되게 됩니다.
-이렇게 `registerDriver()`에 대한 동시성 문제를 해결한 것입니다.
+이렇게 클래스 로더를 활용해서 동시성 문제를 해결할 수도 있습니다.

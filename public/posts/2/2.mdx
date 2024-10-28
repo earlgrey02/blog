@@ -4,7 +4,7 @@ description: 배치 작업을 활용한 외부 API의 성능 문제 극복
 date: 2024-01-25
 tags: [Kotlin, Spring, Kubernetes]
 ---
-이번 글은 Spring Batch와 Kubernetes의 CronJob을 통한 배치 작업에 대한 글입니다.
+이번 글은 Spring Batch와 Kubernetes의 CronJob을 통해 구현한 배치 작업에 대한 글입니다.
 
 <br />
 
@@ -14,9 +14,9 @@ tags: [Kotlin, Spring, Kubernetes]
 ![](1.png)
 
 문제는 제가 사용하는 외부 API인 학교 API가 지연 시간이 긴 편이며 페이지네이션(Pagination) 등의 기능을 제공하지 않는다는 점인데요.
-이렇게 되면 아무리 제가 성능 최적화를 수행해도 학교 API에 의존하는 이상 최적화의 의미가 없어진다고 생각했습니다.
+이렇게 되면 제가 어떤 성능 최적화를 수행하든 학교 API에 의존하는 이상 최적화의 의미가 없어진다고 생각했습니다.
 그래서 주기적으로 학교 API로부터 데이터를 가져와 데이터베이스에 저장하기로 했습니다.
-이러면 기존의 학교 API를 사용하는 부분에서 지연 시간이 짧은 서버 데이터베이스를 사용할 수 있게 됩니다.
+이러면 기존의 학교 API를 사용하는 부분에서 지연 시간이 짧은 데이터베이스를 사용할 수 있게 됩니다.
 
 <br />
 
@@ -25,7 +25,7 @@ tags: [Kotlin, Spring, Kubernetes]
 
 # Spring Batch with Kubernetes
 
-배치 작업을 구현하는데에는 Spring Batch와 Kubernetes의 CronJob을 사용합니다.
+배치 작업을 구현하는데에는 Spring Batch와 Kubernetes의 CronJob을 사용하기로 했습니다.
 외부 API로부터 가져온 데이터들을 데이터베이스를 저장하는 작업을 Spring Batch를 통해 구현하고, 해당 작업을 Kubernetes의 CronJob을 통해 주기적으로 수행하면 됩니다.
 
 # Spring Batch
@@ -40,7 +40,7 @@ spring:
 ```
 
 우선 Spring Batch를 사용하기 위해서는 배치 작업을 관리하는 메타 데이터를 저장할 공간이 필요합니다.
-이에 대해서는 임시적으로 인메모리(In-Memory) DB인 H2를 사용하기로 했습니다.
+이에 대해서는 임시적으로 인메모리(In-memory) DB인 H2를 사용하기로 했습니다.
 
 # Step
 
@@ -114,9 +114,9 @@ class MongoLecturesWriter(
 }
 ```
 
-`MongoLecturesWriter`는 조회한 강의들을 MongoDB에 저장합니다.
+`MongoLecturesWriter`는 조회한 강의들을 데이터베이스에 저장합니다.
 Spring Batch는 아직까진 리액티브 프로그래밍을 지원하지 않으므로 Spring WebFlux 환경에서 Spring Batch를 사용할 때는 `block()`을 통해 스레드를 블로킹(Blocking)해야 합니다.
-그렇지 않으면 스트림을 구독한 채로 배치 스레드가 종료되어 작업이 완료되지 못합니다.
+그렇지 않으면 스트림을 구독한 채로 배치 스레드가 종료되어 작업이 정상적으로 완료되지 않을 수 있습니다.
 
 ```kotlin title="LectureBatchConfiguration.kt" showLineNumbers
 @Bean
@@ -131,7 +131,7 @@ fun saveLecturesStep(
         .build()
 ```
 
-앞서 정의한 `WebClientLecturesReader`와 `MongoLecturesWriter`를 Bean으로 등록한 후 `Step`을 정의합니다.
+앞서 정의한 `WebClientLecturesReader`와 `MongoLecturesWriter`를 통해 `Step`을 만들어 Bean으로 등록합니다.
 
 # Job
 
@@ -179,7 +179,7 @@ fun main(args: Array<String>) {
 
 이제 Kubernetes의 CronJob을 통해 해당 배치 작업을 특정 시간에 주기적으로 수행하도록 하겠습니다.
 참고로 현재 인프라에서는 Helm과 ArgoCD를 통해 배포를 진행하고 있는데요.
-그러므로 따로 존재하는 Helm 레포지토리 내에 CronJob에 대한 매니페스트(Manifest)를 작성하도록 하겠습니다.
+그러므로 따로 존재하는 차트 레포지토리 내에 CronJob에 대한 매니페스트(Manifest)를 작성합니다.
 
 ```yaml title="values.yaml" showLineNumbers
 jobs:

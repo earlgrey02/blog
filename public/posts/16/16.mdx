@@ -39,12 +39,12 @@ tags: [TypeScript, React]
 ![](2.gif)
 
 위 예시는 검색 기능에 디바운싱을 적용한 예시입니다.
-검색어가 연속으로 변하는 중에는 API 호출이 발생하지 않고 타이핑을 끝낸 후에 API 호출이 발생한 것을 확인할 수 있습니다.
+검색창 타이핑(Typing) 중에는 API 호출이 발생하지 않고 타이핑을 끝낸 후에 API 호출이 발생한 것을 확인할 수 있습니다.
 
 # Debouncing with React
 
 React에서는 `useEffect()`를 통해 디바운싱을 쉽게 구현할 수 있습니다.
-`useEffect()`는 의존성 배열 내의 상태 변수가 바뀌었을때, 콜백(Callback)을 호출하는 React Hook 중 하나입니다.
+`useEffect()`는 의존성 배열 내의 상태 변수가 바뀌었을 때, 콜백(Callback)을 호출하는 React Hook 중 하나입니다.
 이때, `useEffect()`의 반환 값으로 설정된 콜백은 `useEffect()`의 다음 호출때 함께 호출됩니다.
 
 ```tsx title="App.tsx" showLineNumbers {5, 7}
@@ -177,7 +177,7 @@ const useLike = (post: PostResponse): LikeStates => {
 게시글의 좋아요 개수인 `count` 및 현재 유저의 좋아요 여부인 `isLiked` 등을 포함한 Custom Hook을 구현했습니다.
 `isLiked`가 처음과 달라졌는지 확인하기 위해 최초의 `isLiked`를 `initialIsLiked`에 저장했습니다.
 좋아요를 클릭하면 `likeHandler`에 의해 `isLiked`의 상태가 바뀌는데요.
-이때, 호출되는 `useDebouncing()`에서 디바운싱을 통해 좋아요를 여러 번 클릭해도 마지막 좋아요 요청만 실제로 처리하게 됩니다.
+이때, 호출되는 `useDebouncing()`에서 디바운싱을 통해 좋아요를 여러 번 클릭해도 마지막 좋아요만 API에 요청하게 됩니다.
 
 <br />
 

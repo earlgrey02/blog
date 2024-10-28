@@ -15,7 +15,7 @@ tags: [Kubernetes]
 
 # CoreDNS
 
-저는 이 문제를 DNS 서버의 문제라고 생각했었습니다.
+저는 이 문제를 DNS(Domain Name System) 서버의 문제라고 생각했었습니다.
 클러스터를 Kubeadm으로 구축했기 때문에 클러스터에서는 DNS 서버로 CoreDNS를 사용하고 있었습니다.
 
 ```console
@@ -34,7 +34,7 @@ kube-dns   ClusterIP   10.96.0.10   <none>        53/UDP,53/TCP,9153/TCP   8d
 ```
 
 CoreDNS의 서비스인 `kube-dns` 또한 존재하고 있었습니다.
-실제로 CoreDNS가 잘 작동하는지 확인하기 위해서 Pod 내에서 `nslookup`을 사용해보기로 했습니다.
+실제로 CoreDNS가 잘 작동하는지 확인하기 위해서 임의의 Pod 내에서 `nslookup`을 사용해보기로 했습니다.
 
 ```yaml title="dnsutils.yaml" showLinesNumber
 apiVersion: v1
@@ -53,7 +53,7 @@ spec:
   restartPolicy: Always
 ```
 
-`nslookup`은 Kubernetes 공식 문서에서 DNS 디버깅(Debugging) 방법으로 소개한 `dnsutils`를 통해 사용했습니다.
+`nslookup`은 Kubernetes 공식 문서에서 DNS 디버깅 방법으로 알려진 `dnsutils`를 통해 사용했습니다.
 
 ```console
 > kubectl exec -it dnsutils -- nslookup google.com
