@@ -34,7 +34,7 @@ const Layout = ({ children }: Props) => {
       <Head />
       <body>
         <RootProvider>
-          <Box position="relative" maxWidth="50rem" minHeight="100vh" margin="0 auto" padding="2.5rem 1.4rem">
+          <Box position="relative" maxWidth="52rem" minHeight="100vh" margin="0 auto" padding="2.5rem 1.4rem">
             <Header />
             {children}
           </Box>

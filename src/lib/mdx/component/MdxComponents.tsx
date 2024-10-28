@@ -9,7 +9,7 @@ const mdxComponents = (id: number): MDXComponents => ({
       as="span"
       fontSize={{
         base: '0.8rem',
-        sm: '0.9rem'
+        sm: '0.92rem'
       }}
       lineHeight={2}
       wordBreak="break-word">
@@ -17,17 +17,17 @@ const mdxComponents = (id: number): MDXComponents => ({
     </Text>
   ),
   h1: ({ children }) => (
-    <Text as="h1" marginTop="1.2rem" marginBottom="0.4rem" fontSize="1.3rem" fontWeight={600}>
+    <Text as="h1" marginTop="1.2rem" marginBottom="0.4rem" fontSize="1.3rem" fontWeight={800}>
       {children}
     </Text>
   ),
   h2: ({ children }) => (
-    <Text as="h2" marginTop="1.2rem" marginBottom="0.4rem" fontSize="1.1rem" fontWeight={600}>
+    <Text as="h2" marginTop="1.2rem" marginBottom="0.4rem" fontSize="1.1rem" fontWeight={800}>
       {children}
     </Text>
   ),
   a: ({ href, children }) => (
-    <Link as={NextLink} href={href} target="_blank" color="teal.500" fontWeight={600}>
+    <Link as={NextLink} href={href} target="_blank" color="teal.400" fontWeight={600}>
       {children}
     </Link>
   ),

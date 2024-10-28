@@ -51,12 +51,12 @@ const codeStyle: SystemStyleFunction = props => ({
   figcaption: {
     '&[data-rehype-pretty-code-title]': {
       marginTop: '1rem',
-      paddingX: '0.9rem',
-      paddingY: '0.7rem',
+      paddingX: '1rem',
+      paddingY: '0.9rem',
       borderBottom: 0,
       borderTopRadius: '0.4rem',
       backgroundColor: mode('blackAlpha.800', 'blackAlpha.300')(props),
-      fontSize: '0.75rem',
+      fontSize: '0.8rem',
       color: 'rgb(200, 200, 200)',
       '& + pre': {
         marginTop: 0,
