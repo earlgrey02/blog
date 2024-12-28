@@ -2,7 +2,7 @@ import tslint from 'typescript-eslint'
 import importPlugin from 'eslint-plugin-import'
 
 const config = tslint.config(
-  tslint.configs.recommendedTypeChecked,
+  tslint.configs.recommended,
   {
     languageOptions: {
       parserOptions: {
