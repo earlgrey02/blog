@@ -1,6 +1,7 @@
 import './global.css'
 
 import type { ReactNode } from 'react'
+import RootProvider from '@/component/common/RootProvider'
 
 interface Props {
   children: ReactNode
@@ -10,7 +11,9 @@ const Layout = ({ children }: Props) => {
   return (
     <html>
       <head />
-      <body>{children}</body>
+      <body>
+        <RootProvider>{children}</RootProvider>
+      </body>
     </html>
   )
 }
