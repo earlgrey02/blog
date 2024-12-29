@@ -9,7 +9,7 @@ import { ColorMode } from '@/lib/shadcn-ui/enum'
 
 type Props = ButtonProps
 
-const ColorModeSwitch = ({ ...props }: Props) => {
+const ColorModeSwitch = (props: Props) => {
   const { resolvedTheme: theme, setTheme } = useTheme()
 
   return (
