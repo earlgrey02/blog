@@ -1,5 +1,14 @@
 import type { NextConfig } from 'next'
 
-const config = {} satisfies NextConfig
+const config = {
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'avatars.githubusercontent.com'
+      }
+    ]
+  }
+} satisfies NextConfig
 
 export default config
