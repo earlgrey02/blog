@@ -1,8 +1,10 @@
 import tslint from 'typescript-eslint'
 import importPlugin from 'eslint-plugin-import'
+import tailwindPlugin from 'eslint-plugin-tailwindcss'
 
 const config = tslint.config(
   tslint.configs.recommended,
+  ...tailwindPlugin.configs['flat/recommended'],
   {
     languageOptions: {
       parserOptions: {
