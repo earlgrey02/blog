@@ -4,6 +4,7 @@ import { Sun } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import type { ButtonProps } from '@/component/ui/Button'
 import Button from '@/component/ui/Button'
+import { Moon } from '@/component/ui/icons'
 import { ColorMode } from '@/lib/shadcn-ui/enum'
 
 type Props = ButtonProps
