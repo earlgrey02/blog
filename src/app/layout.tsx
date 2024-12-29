@@ -1,6 +1,7 @@
 import './global.css'
 
 import type { ReactNode } from 'react'
+import Header from '@/component/common/Header'
 import RootProvider from '@/component/common/RootProvider'
 
 interface Props {
@@ -13,7 +14,10 @@ const Layout = ({ children }: Props) => {
       <head />
       <body>
         <RootProvider>
-          <div className="mx-auto min-h-screen max-w-[52rem] p-6">{children}</div>
+          <div className="mx-auto min-h-screen max-w-[52rem] p-6">
+            <Header />
+            {children}
+          </div>
         </RootProvider>
       </body>
     </html>
