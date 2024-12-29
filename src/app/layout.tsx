@@ -10,7 +10,7 @@ interface Props {
 
 const Layout = ({ children }: Props) => {
   return (
-    <html>
+    <html suppressHydrationWarning>
       <head />
       <body>
         <RootProvider>
