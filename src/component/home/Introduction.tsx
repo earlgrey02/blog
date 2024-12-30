@@ -8,8 +8,8 @@ const Introduction = () => {
     <div className="my-6 flex h-28 gap-5 md:h-40 md:gap-7">
       <div className="relative aspect-square">
         <Image
-          className="rounded-md"
-          src="https://avatars.githubusercontent.com/u/82157140?v=4"
+          className="rounded-md object-cover"
+          src="/image/profile.jpeg"
           alt="earlgrey02"
           fill
           priority
@@ -20,7 +20,7 @@ const Introduction = () => {
         />
       </div>
       <div className="flex flex-col gap-1 md:gap-4 md:py-2 md:leading-6">
-        <div className="flex flex-col md:gap-2">
+        <div className="flex flex-col md:gap-1">
           <div className="text-[0.75rem] font-light text-neutral-600 dark:text-neutral-400 md:text-[0.95rem]">
             Backend Developer
           </div>
