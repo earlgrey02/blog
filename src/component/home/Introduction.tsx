@@ -12,6 +12,11 @@ const Introduction = () => {
           src="https://avatars.githubusercontent.com/u/82157140?v=4"
           alt="earlgrey02"
           fill
+          priority
+          sizes="
+            (min-width: 768px) 15vw,
+            35vw
+          "
         />
       </div>
       <div className="flex flex-col gap-1 md:gap-4 md:py-2 md:leading-6">
