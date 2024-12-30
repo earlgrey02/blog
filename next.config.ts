@@ -7,7 +7,9 @@ const config: NextConfig = {
         protocol: 'https',
         hostname: 'avatars.githubusercontent.com'
       }
-    ]
+    ],
+    deviceSizes: [640, 1080, 1200],
+    imageSizes: [32, 64, 128]
   }
 }
 
