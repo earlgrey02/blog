@@ -17,7 +17,7 @@ const PostItem = ({ post }: Props) => {
         <div className="text-[0.75rem] text-neutral-500 dark:text-neutral-300 md:text-sm">{description}</div>
         <div className="my-1.5 flex gap-1.5">
           {tags.map(tag => (
-            <TagItem tag={tag} />
+            <TagItem tag={tag} key={tag} />
           ))}
         </div>
         <div className="text-[0.6rem] font-light -tracking-tight text-neutral-500 dark:text-neutral-400 md:text-[0.8rem]">
