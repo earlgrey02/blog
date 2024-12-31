@@ -6,7 +6,11 @@ interface Props {
 }
 
 const RootProvider = ({ children }: Props) => {
-  return <ThemeProvider attribute="class">{children}</ThemeProvider>
+  return (
+    <ThemeProvider attribute="class" disableTransitionOnChange>
+      {children}
+    </ThemeProvider>
+  )
 }
 
 export default RootProvider

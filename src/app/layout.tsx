@@ -14,7 +14,7 @@ const Layout = ({ children }: Props) => {
       <head />
       <body>
         <RootProvider>
-          <div className="mx-auto min-h-screen max-w-[52rem] p-6">
+          <div className="mx-auto min-h-screen max-w-[52rem] px-6 pb-20 pt-2 md:pt-6">
             <Header />
             {children}
           </div>
