@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { ThemeProvider } from 'next-themes'
+import { RecoilRoot } from 'recoil'
 
 interface Props {
   children: ReactNode
@@ -7,9 +8,11 @@ interface Props {
 
 const RootProvider = ({ children }: Props) => {
   return (
-    <ThemeProvider attribute="class" disableTransitionOnChange>
-      {children}
-    </ThemeProvider>
+    <RecoilRoot>
+      <ThemeProvider attribute="class" disableTransitionOnChange>
+        {children}
+      </ThemeProvider>
+    </RecoilRoot>
   )
 }
 
