@@ -7,6 +7,8 @@ import { cn } from '@/lib/shadcn-ui/util'
 
 type PaginationButtonProps = ButtonProps & { isActive?: boolean }
 
+type PaginationNavigationProps = PaginationButtonProps & { direction: 'previous' | 'next' }
+
 const Pagination = ({ className, ...props }: ComponentProps<'nav'>) => (
   <nav
     role="navigation"
@@ -20,33 +22,21 @@ const PaginationContent = forwardRef<HTMLUListElement, ComponentProps<'ul'>>(({ 
   <ul ref={ref} className={cn('flex flex-row items-center gap-1', className)} {...props} />
 ))
 
-const PaginationItem = forwardRef<HTMLLIElement, ComponentProps<'li'>>(({ className, ...props }, ref) => (
-  <li ref={ref} className={cn('', className)} {...props} />
-))
+const PaginationItem = forwardRef<HTMLLIElement, ComponentProps<'li'>>((props, ref) => <li ref={ref} {...props} />)
 
 const PaginationButton = ({ isActive, ...props }: PaginationButtonProps) => (
   <Button
     aria-current={isActive ? 'page' : undefined}
-    variant={isActive ? 'outline' : 'ghost'}
+    variant={isActive ? 'secondary' : 'ghost'}
     size="icon"
     {...props}
   />
 )
 
-const PaginationPrevious = ({ className, ...props }: ComponentProps<typeof PaginationButton>) => (
-  <PaginationButton
-    aria-label="Go to previous page"
-    size="default"
-    className={cn('gap-1 pl-2.5', className)}
-    {...props}>
-    <ChevronLeft className="size-4" />
+const PaginationNavigation = ({ direction, ...props }: PaginationNavigationProps) => (
+  <PaginationButton aria-label={`Go to ${direction} page`} {...props}>
+    {direction === 'previous' ? <ChevronLeft /> : <ChevronRight />}
   </PaginationButton>
 )
 
-const PaginationNext = ({ className, ...props }: ComponentProps<typeof PaginationButton>) => (
-  <PaginationButton aria-label="Go to next page" size="default" className={cn('gap-1 pr-2.5', className)} {...props}>
-    <ChevronRight className="size-4" />
-  </PaginationButton>
-)
-
-export { Pagination, PaginationContent, PaginationButton, PaginationItem, PaginationPrevious, PaginationNext }
+export { Pagination, PaginationContent, PaginationButton, PaginationItem, PaginationNavigation }
