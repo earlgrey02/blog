@@ -14,10 +14,12 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
+    "@types/eslint-plugin-tailwindcss": "^3",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
+    "eslint-plugin-tailwindcss": "^3.17.5",
     "postcss": "^8",
     "prettier": "^3.4.2",
     "tailwindcss": "^3.4.1",
