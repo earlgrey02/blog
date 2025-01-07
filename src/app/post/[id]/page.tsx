@@ -12,14 +12,16 @@ const Page = async ({ params }: Props) => {
   const post = getPostById(id) ?? notFound()
 
   return (
-    <div className="flex flex-col gap-4 pb-12 md:gap-6">
-      <div className="flex flex-col gap-0.5 break-keep md:gap-1.5">
-        <div className="text-xl font-extrabold md:text-[1.6rem]">{post.title}</div>
+    <div className="flex flex-col gap-4 break-words pb-12 md:gap-6">
+      <div className="flex flex-col gap-0.5 md:gap-1.5">
+        <div className="text-xl font-extrabold md:text-[1.7rem]">{post.title}</div>
         <div className="text-sm font-light md:text-[1rem]">{post.description}</div>
         <div className="mt-2 text-[0.7rem] text-neutral-500 md:text-xs">{post.date.split('T')[0]}</div>
       </div>
       <Separator />
-      <Markdown post={post} />
+      <div>
+        <Markdown post={post} />
+      </div>
     </div>
   )
 }
