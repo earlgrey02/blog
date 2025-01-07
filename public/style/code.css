@@ -1,0 +1,45 @@
+code {
+    font-family: 'JetBrains Mono', sans-serif;
+}
+
+figure > pre {
+    @apply mb-3 px-2 md:px-3 py-3 rounded-md
+}
+
+span + figure > pre {
+    @apply mt-3 md:mt-5
+}
+
+figure > pre > code {
+    @apply overflow-x-scroll text-[0.7rem] md:text-[0.8rem]
+}
+
+figure > pre > code[data-line-numbers] {
+    counter-reset: line;
+}
+
+span > code {
+    @apply mx-0.5 rounded-sm bg-neutral-200 px-1.5 py-1 text-[0.65rem] md:text-xs dark:bg-neutral-600/50
+}
+
+code[data-line-numbers] > span[data-line]::before {
+    counter-increment: line;
+    content: counter(line);
+    @apply mr-3.5 inline-block w-5 text-right text-neutral-600
+}
+
+code > span[data-highlighted-line] {
+    @apply border-l-[0.1rem] border-l-neutral-400 bg-neutral-700/50
+}
+
+figcaption[data-rehype-pretty-code-title] {
+    @apply rounded-t-md bg-neutral-800/95 px-3.5 md:px-[1.05rem] py-3 md:py-3.5 text-[0.65rem] md:text-[0.8rem] text-neutral-300 dark:bg-neutral-700/40
+}
+
+span + figure > figcaption[data-rehype-pretty-code-title] {
+    @apply mt-3 md:mt-5
+}
+
+figcaption[data-rehype-pretty-code-title] + pre {
+    @apply mt-0 rounded-t-none
+}
