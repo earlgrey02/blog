@@ -20,7 +20,7 @@ const PostPaginator = ({ totalPage }: Props) => {
 
     if (end - start < maxPage) start = Math.max(0, end - maxPage)
 
-    return Array.from({ length: maxPage }, (_, index) => start + index)
+    return Array.from({ length: Math.min(maxPage, totalPage) }, (_, index) => start + index)
   }, [totalPage, pageIndex])
 
   return (
