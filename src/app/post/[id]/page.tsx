@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import Markdown from '@/component/post/Markdown'
 import Separator from '@/component/ui/Separator'
@@ -28,5 +29,21 @@ const Page = async ({ params }: Props) => {
 
 const generateStaticParams = () => getPosts().map(post => ({ id: post.id }))
 
-export { generateStaticParams }
+const generateMetadata = async ({ params }: Props): Promise<Metadata> => {
+  const { id } = await params
+  const { title, description, tags } = getPostById(id) ?? notFound()
+
+  return {
+    title: title,
+    description: description,
+    openGraph: {
+      title,
+      description,
+      type: 'article'
+    },
+    keywords: tags
+  }
+}
+
+export { generateStaticParams, generateMetadata }
 export default Page
