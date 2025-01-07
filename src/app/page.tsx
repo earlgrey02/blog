@@ -1,4 +1,3 @@
-import { allPosts } from 'contentlayer'
 import { ChevronRight } from 'lucide-react'
 import Link from 'next/link'
 import Introduction from '@/component/home/Introduction'
@@ -6,9 +5,12 @@ import PostList from '@/component/post/PostList'
 import Button from '@/component/ui/Button'
 import Motion from '@/component/ui/Motion'
 import Separator from '@/component/ui/Separator'
+import { getPostsOrderByDate } from '@/lib/contentlayer/util'
 import { fadeIn } from '@/lib/framer-motion/animations'
 
 const Page = () => {
+  const posts = getPostsOrderByDate()
+
   return (
     <Motion
       className="flex flex-col gap-6 md:gap-8"
@@ -33,7 +35,7 @@ const Page = () => {
         </div>
       </Motion>
       <PostList
-        posts={allPosts.slice(0, 3)}
+        posts={posts.slice(0, 3)}
         transition={{
           staggerChildren: 0.2,
           delayChildren: 0.8

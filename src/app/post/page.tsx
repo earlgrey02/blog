@@ -1,18 +1,19 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { Post } from 'contentlayer'
-import { allPosts } from 'contentlayer'
 import { useSelector } from 'react-redux'
 import PostList from '@/component/post/PostList'
 import PostPaginator from '@/component/post/PostPaginator'
 import Motion from '@/component/ui/Motion'
+import { getPostsOrderByDate } from '@/lib/contentlayer/util'
 import { fadeIn } from '@/lib/framer-motion/animations'
 
 const Page = () => {
   const { pageIndex } = useSelector(store => store.post)
   const [delayChildren, setDelayChildren] = useState(0.5)
-  const pages = allPosts.reduce<Post[][]>((pages, post, index) => {
+  const posts = useMemo(getPostsOrderByDate, [])
+  const pages = posts.reduce<Post[][]>((pages, post, index) => {
     const pageIndex = Math.floor(index / 4)
 
     if (!pages[pageIndex]) pages[pageIndex] = []
