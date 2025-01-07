@@ -1,5 +1,6 @@
 import '../../public/style/global.css'
 import type { ReactNode } from 'react'
+import Header from '@/component/common/Header'
 import RootProvider from '@/component/common/RootProvider'
 
 interface Props {
@@ -10,7 +11,10 @@ const Layout = ({ children }: Props) => {
   return (
     <html>
       <body>
-        <RootProvider>{children}</RootProvider>
+        <RootProvider>
+          <Header />
+          {children}
+        </RootProvider>
       </body>
     </html>
   )
