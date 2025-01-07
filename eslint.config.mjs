@@ -23,7 +23,7 @@ const config = tslint.config(
       'import/order': [
         'error',
         {
-          groups: ['builtin', 'external', 'internal'],
+          groups: ['builtin', 'external', 'internal', 'parent', 'sibling', 'index', 'type'],
           pathGroups: [
             {
               pattern: 'react',
