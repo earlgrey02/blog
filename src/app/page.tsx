@@ -32,7 +32,13 @@ const Page = () => {
           </Link>
         </div>
       </Motion>
-      <PostList posts={allPosts.slice(0, 3)} transition={{ delayChildren: 0.8 }} />
+      <PostList
+        posts={allPosts.slice(0, 3)}
+        transition={{
+          staggerChildren: 0.2,
+          delayChildren: 0.8
+        }}
+      />
     </Motion>
   )
 }
