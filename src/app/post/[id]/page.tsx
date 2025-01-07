@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation'
 import Markdown from '@/component/post/Markdown'
 import Separator from '@/component/ui/Separator'
-import { getPostById } from '@/lib/contentlayer/util'
+import { getPostById, getPosts } from '@/lib/contentlayer/util'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -24,4 +24,7 @@ const Page = async ({ params }: Props) => {
   )
 }
 
+const generateStaticParams = () => getPosts().map(post => ({ id: post.id }))
+
+export { generateStaticParams }
 export default Page
