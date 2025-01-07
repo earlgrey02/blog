@@ -12,8 +12,10 @@ const Layout = ({ children }: Props) => {
     <html>
       <body>
         <RootProvider>
-          <Header />
-          {children}
+          <div className="mx-auto max-w-[52rem] px-6 pt-2 md:pt-5">
+            <Header />
+            <div className="py-3 md:py-6">{children}</div>
+          </div>
         </RootProvider>
       </body>
     </html>
