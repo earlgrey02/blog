@@ -33,7 +33,7 @@ code > span[data-highlighted-line] {
 }
 
 figcaption[data-rehype-pretty-code-title] {
-    @apply rounded-t-md bg-neutral-800/95 px-3.5 md:px-[1.05rem] py-3 md:py-3.5 text-[0.65rem] md:text-[0.8rem] text-neutral-300 dark:bg-neutral-700/40
+    @apply rounded-t-md bg-neutral-800/95 px-3.5 md:px-[1.05rem] py-3 text-[0.65rem] md:text-[0.8rem] text-neutral-300 dark:bg-neutral-700/40
 }
 
 span + figure > figcaption[data-rehype-pretty-code-title] {
