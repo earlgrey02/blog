@@ -1,5 +1,6 @@
 import type { NextConfig as Config } from 'next'
+import { withContentlayer } from 'next-contentlayer'
 
 const config: Config = {}
 
-export default config
+export default withContentlayer(config)
