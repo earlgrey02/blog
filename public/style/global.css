@@ -64,7 +64,11 @@
 
 @layer base {
     * {
-        @apply border-border;
+        @apply border-border select-none;
+    }
+
+    *::-webkit-scrollbar {
+        @apply hidden
     }
 
     body {
