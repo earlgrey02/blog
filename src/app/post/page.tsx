@@ -1,8 +1,8 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import type { Post } from 'contentlayer'
 import { useSelector } from 'react-redux'
+import type { Post } from 'contentlayer'
 import PostList from '@/component/post/PostList'
 import PostPaginator from '@/component/post/PostPaginator'
 import Motion from '@/component/ui/Motion'

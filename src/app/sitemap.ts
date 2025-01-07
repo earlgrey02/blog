@@ -1,5 +1,5 @@
-import { getPosts } from '@/lib/contentlayer/util'
 import type { Sitemap } from '@/lib/type/seo'
+import { getPosts } from '@/lib/contentlayer/util'
 
 const sitemap = (): Sitemap => {
   const sitemaps: Sitemap = getPosts().map(post => ({

@@ -1,5 +1,5 @@
-import type { Post } from 'contentlayer'
 import Link from 'next/link'
+import type { Post } from 'contentlayer'
 import TagItem from '@/component/post/TagItem'
 
 interface Props {

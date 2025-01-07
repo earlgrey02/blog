@@ -1,9 +1,8 @@
 import type { ButtonHTMLAttributes } from 'react'
-import * as React from 'react'
 import { forwardRef } from 'react'
-import type { VariantProps } from 'class-variance-authority'
 import { cva } from 'class-variance-authority'
 import { Slot } from '@radix-ui/react-slot'
+import type { VariantProps } from 'class-variance-authority'
 import { cn } from '@/lib/shadcn-ui/util'
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & VariantProps<typeof buttonVariants> & { asChild?: boolean }

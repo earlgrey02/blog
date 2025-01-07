@@ -1,8 +1,8 @@
 import { Dot } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
-import Separator from '@/component/ui/Separator'
 import type { MdxComponents } from '@/lib/contentlayer/contentlayer'
+import Separator from '@/component/ui/Separator'
 
 const mdxComponents = (id: string): MdxComponents => ({
   p: ({ children }) => (
