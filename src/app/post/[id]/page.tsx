@@ -34,8 +34,8 @@ const generateMetadata = async ({ params }: Props): Promise<Metadata> => {
   const { title, description, tags } = getPostById(id) ?? notFound()
 
   return {
-    title: title,
-    description: description,
+    title,
+    description,
     openGraph: {
       title,
       description,
