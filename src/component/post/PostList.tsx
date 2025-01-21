@@ -10,7 +10,7 @@ const PostList = ({ posts, ...props }: Props) => {
   return (
     <Motion className="flex flex-col gap-6" initial="initial" animate="animate" {...props}>
       {posts.map(post => (
-        <Motion variants={fadeInRight} key={post.id}>
+        <Motion layoutId={post.id} variants={fadeInRight} key={post.id}>
           <PostItem post={post} />
         </Motion>
       ))}
