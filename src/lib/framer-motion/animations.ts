@@ -1,4 +1,5 @@
 'use client'
+
 import type { Variants } from 'framer-motion'
 
 const fadeIn: Variants = {
