@@ -68,10 +68,6 @@
         @apply border-border select-none;
     }
 
-    *::-webkit-scrollbar {
-        @apply hidden
-    }
-
     body {
         @apply bg-background text-foreground;
         font-family: 'NanumSquareAc', sans-serif;
