@@ -1,0 +1,265 @@
+---
+title: Next.js에서의 마크다운
+description: Next.js로 마크다운 기반 블로그 만들기
+date: 2024-12-02
+tags: [JavaScript, TypeScript, React.js, Next.js]
+---
+저는 이전까지 타 플랫폼에 의존해 블로그를 운영하다가 이번에 자체적으로 블로그를 Next.js로 개발해 운영하게 되었는데요.
+게시글을 마크다운(Markdown) 형식으로 작성할 생각이라 Next.js에서 어떻게 마크다운을 다룰지 고민하고 있었습니다.
+
+# 마크다운 파싱
+
+Next.js에서 마크다운을 컴포넌트로 파싱(Parsing)해주는 기술 스택으로는 `next/mdx`와 Contentlayer가 있습니다.
+`next/mdx`의 경우, 런타임에 Node.js의 `fs`를 통해 파일 시스템에 접근해 게시글을 읽어와야 하는데요.
+`fs`는 서버 컴포넌트에서만 사용 가능하므로 게시글을 다루는 모든 컴포넌트에는 SSR(Server Side Rendering)이 강제적으로 요구된다는 단점을 가지게 됩니다.
+그에 비해 Contentlayer는 빌드 시점에 게시글들을 읽어와 JavaScript로 변환하기 때문에 클라이언트 컴포넌트에서도 접근할 수 있습니다.
+그래서 유연함이나 성능 측면에서 Contentlayer가 뛰어나다고 생각해 Contentlayer를 사용하기로 했습니다.
+
+## Contentlayer 설정
+
+앞서 설명드렸듯이, 저는 Contentlayer를 통해 마크다운을 다루기로 했는데요.
+
+```ts title="contentlayer.config.ts" showLineNumbers
+import { defineDocumentType, makeSource } from 'contentlayer/source-files'
+import remarkBreaks from 'remark-breaks'
+import rehypePrettyCode from 'rehype-pretty-code'
+
+const Post = defineDocumentType(() => ({
+  name: 'Post',
+  filePathPattern: `**/*.mdx`,
+  contentType: 'mdx',
+  fields: {
+    title: {
+      type: 'string',
+      required: true
+    },
+    description: {
+      type: 'string',
+      required: true
+    },
+    date: {
+      type: 'date',
+      required: true
+    },
+    tags: {
+      type: 'list',
+      of: { type: 'string' },
+      required: true
+    }
+  },
+  computedFields: {
+    id: {
+      type: 'string',
+      resolve: doc => doc._raw.sourceFileDir
+    }
+  }
+}))
+
+const source = makeSource({
+  contentDirPath: './public/post',
+  documentTypes: [Post],
+  mdx: {
+    remarkPlugins: [remarkBreaks],
+    rehypePlugins: [
+      [
+        rehypePrettyCode,
+        {
+          theme: 'material-theme-darker',
+          keepBackground: true
+        }
+      ]
+    ]
+  }
+})
+
+export type { Post }
+export default source
+```
+
+우선 Contentlayer를 사용하기 전에 `contentlayer.config.ts`에 게시글의 메타 데이터 형식과 마크다운 플러그인을 설정했는데요.
+이후, 빌드를 수행하면 루트에 `.contentlayer` 디렉토리가 생성됩니다.
+
+```mdx title="21.mdx"
+---
+title: Next.js에서의 마크다운
+description: Next.js로 마크다운 기반 블로그 만들기
+date: 2024-12-02
+tags: [TypeScript, React, Next]
+---
+저는 이전까지 타 플랫폼에 의존해 블로그를 운영하다가 이번에 자체적으로 블로그를 Next.js로 개발해 운영하게 되었는데요.
+게시글을 마크다운(Markdown) 형식으로 작성할 생각이라 Next.js에서 어떻게 마크다운을 다룰 지 고민하고 있었습니다.
+...
+```
+```json title="_21__21.mdx.json" showLineNumbers
+{
+  "title": "Next.js에서의 마크다운",
+  "description": "Next.js로 마크다운 기반 블로그 만들기",
+  "date": "2024-12-02T00:00:00.000Z",
+  "tags": [
+    "TypeScript",
+    "React",
+    "Next"
+  ],
+  "body": {
+    "raw": "저는 이전까지 타 플랫폼에 의존해 블로그를 운영하다가 이번에 자체적으로 블로그를 Next.js로 개발해 운영하게...",
+    "code": "var Component=(()=>{var Se=Object.create;var U=Object.defineProperty;var je=Object.getOwnPropertyDescriptor;var ..."
+  },
+  "_id": "21/21.mdx",
+  "_raw": {
+    "sourceFilePath": "21/21.mdx",
+    "sourceFileName": "21.mdx",
+    "sourceFileDir": "21",
+    "contentType": "mdx",
+    "flattenedPath": "21/21"
+  },
+  "type": "Post",
+  "id": "21"
+}
+```
+
+`.contentlayer`에는 게시글들이 파싱된 JSON(JavaScript Object Notation) 파일들이 있는데요.
+JSON에는 `title` 등의 메타 데이터들을 비롯한 JSX(JavaScript Extension) 컴포넌트의 원시 코드인 `code`가 있습니다.
+
+```js title="_index.mjs" showLineNumbers
+import _1__1Mdx from './_1__1.mdx.json' assert { type: 'json' }
+import _2__2Mdx from './_2__2.mdx.json' assert { type: 'json' }
+...
+import _21__21Mdx from './_21__21.mdx.json' assert { type: 'json' }
+
+export const allPosts = [_1__1Mdx, _2__2Mdx, ..., _21__21Mdx]
+```
+
+이렇게 파싱된 JSON들은 모두 `allPosts`라는 하나의 배열에 포함됩니다.
+이제 이 `allPosts`를 통해 게시글들을 가져오면 됩니다.
+
+# 게시글 페이지 구현
+
+게시글 페이지에서는 게시글을 컴포넌트로 파싱해 렌더링할 생각인데요.
+
+```tsx title="Markdown.tsx" showLineNumbers {6}
+interface Props {
+  post: Post
+}
+
+const Markdown = ({ post }: Props) => {
+  const Component = useMdxComponent(post.body.code)
+
+  return <Component components={mdxComponents(post.id)} />
+}
+
+export default Markdown
+```
+
+게시글을 컴포넌트로 파싱하기 위해서 `useMdxComponent()`를 사용할 수 있습니다.
+이름에서 알 수 있듯이, `useMdxComponent()`는 커스텀 훅(Hook)이므로 클라이언트 컴포넌트에서만 사용 가능합니다.
+그래서 따로 `Markdown`이라는 클라이언트 컴포넌트를 만들어 주었습니다.
+
+<br /><br />
+
+`useMdxComponent()`에 게시글의 `body`에 있는 `code`를 주면 해당 `code`를 파싱해 컴포넌트를 반환하는데요.
+이때, 반환된 컴포넌트는 `components`라는 Props를 전달받을 수 있습니다.
+해당 Props를 활용하면 `h1` 등의 마크다운 전용 태그들을 커스텀할 수 있는데요.
+
+```tsx title="mdxComponents.tsx" showLineNumbers
+const mdxComponents = (id: string): MdxComponents => ({
+  p: ({ children }) => (
+    <span className="break-keep text-[0.8rem] leading-loose text-neutral-600 dark:text-neutral-300 md:text-[0.9rem]">
+      {children}
+    </span>
+  ),
+  h1: ({ children }) => (
+    <div className="mb-2 mt-6 flex flex-col gap-1.5 md:mb-4 md:mt-10 md:gap-2">
+      <h1 className="text-lg font-bold text-black dark:text-white md:text-[1.35rem]">{children}</h1>
+      <Separator />
+    </div>
+  ),
+  h2: ({ children }) => (
+    <h2 className="-ml-2 mb-1.5 mt-4 flex items-center text-[1rem] font-bold text-neutral-700 dark:text-neutral-200 md:text-lg">
+      <Dot />
+      {children}
+    </h2>
+  ),
+  img: ({ src, alt }) => (
+    <div className="relative my-5 aspect-video">
+      <Image
+        className="object-contain"
+        src={`/post/${id}/${src}`}
+        alt={alt ?? 'unnamed image'}
+        fill
+        sizes="
+            (min-width: 768px) 50vw,
+            90vw
+          "
+      />
+    </div>
+  ),
+  a: ({ href, children }) => (
+    <Link
+      href={href!}
+      className="border-b-[0.05rem] border-b-black/50 text-black dark:border-b-white/50 dark:text-white"
+      target="_blank">
+      {children}
+    </Link>
+  )
+})
+
+export default mdxComponents
+```
+
+저의 경우, 위와 같이 `mdxComponents`를 만들어 Props로 전달했습니다.
+
+```tsx title="Page.tsx" showLineNumbers
+interface Props {
+  params: Promise<{ id: string }>
+}
+
+const Page = async ({ params }: Props) => {
+  const { id } = await params
+  const post = getPostById(id) ?? notFound()
+
+  return (
+    <div className="flex flex-col gap-4 break-words pb-12 md:gap-6">
+      <div className="flex flex-col gap-0.5 md:gap-2.5">
+        <div className="text-xl font-extrabold md:text-[1.7rem]">{post.title}</div>
+        <div className="text-sm font-light md:text-[1rem]">{post.description}</div>
+        <div className="mt-1 text-[0.7rem] text-neutral-500 md:text-xs">{post.date.split('T')[0]}</div>
+      </div>
+      <Separator />
+      <div>
+        <Markdown post={post} />
+      </div>
+    </div>
+  )
+}
+
+
+const generateStaticParams = () => getPosts().map(post => ({ id: post.id }))
+
+const generateMetadata = async ({ params }: Props): Promise<Metadata> => {
+  const { id } = await params
+  const { title, description, tags } = getPostById(id) ?? notFound()
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: 'article'
+    },
+    keywords: tags
+  }
+}
+
+export { generateStaticParams, generateMetadata }
+export default Page
+```
+
+이제 게시글 페이지에서는 게시글 번호를 경로 인자로 받아 게시글을 가져오고 해당 게시글을 `Markdown` 컴포넌트에 전달해 보여줄 수 있습니다.
+또한 게시글은 빌드 시점에 Contentlayer에 의해 정적으로 생성되는데요.
+그러므로 굳이 SSR(Server Side Rendering)을 사용할 이유가 없습니다.
+그래서 각각의 게시글에 대한 페이지들을 SSG(Static Site Generation)로 렌더링하도록 했습니다.
+
+<br /><br />
+
+이렇게 개발한 블로그 전체 코드는 [GitHub](https://github.com/earlgrey02/blog)에서 보실 수 있습니다.

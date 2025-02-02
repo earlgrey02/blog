@@ -1,0 +1,354 @@
+---
+title: 코루틴에서의 로그 추적
+description: 코루틴 환경에서 MDC를 통해 로그 추적하기
+date: 2024-09-08
+tags: [Kotlin, Spring]
+---
+이전에 [Spring WebFlux 환경에서의 로그 추적](/post/1)을 구현한 경험이 있었는데요.
+이번에는 Reactor가 아닌 Kotlin의 코루틴(Coroutine)을 사용하면서 로그 추적 기능을 새롭게 구현하게 되었습니다.
+
+# 로그 추적 구현
+
+```kotlin title="MdcFilter.kt" showLineNumbers
+class MdcFilter : WebFilter {
+    override fun filter(exchange: ServerWebExchange, chain: WebFilterChain): Mono<Void> =
+        chain.filter(exchange)
+            .contextWrite { it.put("traceId", UUID.randomUUID().toString().substring(0..7)) }
+}
+```
+```kotlin title="MdcContextLifter.kt" showLineNumbers
+class MdcContextLifter<T>(
+    private val coreSubscriber: CoreSubscriber<T>
+) : CoreSubscriber<T> {
+    override fun onSubscribe(subscription: Subscription) {
+        coreSubscriber.onSubscribe(subscription)
+    }
+
+    override fun onNext(t: T) {
+        currentContext().synchronizeMdc()
+        coreSubscriber.onNext(t)
+    }
+
+    override fun onError(throwable: Throwable) {
+        coreSubscriber.onError(throwable)
+    }
+
+    override fun onComplete() {
+        coreSubscriber.onComplete()
+    }
+
+    override fun currentContext(): Context = coreSubscriber.currentContext()
+
+    private fun Context.synchronizeMdc() {
+        getOrEmpty<String>("traceId")
+            .ifPresent { MDC.put("traceId", it) }
+    }
+}
+```
+
+기존의 Reactor 환경에서는 리액티브 연산자마다 Reactor Context 내의 `traceId`를 MDC 내부로 복사하는 방식으로 스레드에 종속받지 않는 로그 추적 기능을 구현했었습니다.
+이와 마찬가지로 코루틴에서는 Reactor Context와 비슷한 코루틴 컨텍스트를 활용할 수 있었습니다.
+
+## MDCContext
+
+`MdcContextLifter`처럼 코루틴 컨텍스트와 MDC를 동기화하는 작업을 직접 구현할 수도 있겠지만, 이미 코루틴에서는 `MDCContext`라는 MDC 전용 코루틴 컨텍스트를 제공하고 있었습니다.
+
+```kotlin title="MDCContext.kt" showLineNumbers {7-11}
+public class MDCContext(
+    @Suppress("MemberVisibilityCanBePrivate")
+    public val contextMap: MDCContextMap = MDC.getCopyOfContextMap()
+) : ThreadContextElement<MDCContextMap>, AbstractCoroutineContextElement(Key) {
+    public companion object Key : CoroutineContext.Key<MDCContext>
+
+    override fun updateThreadContext(context: CoroutineContext): MDCContextMap {
+        val oldState = MDC.getCopyOfContextMap()
+        setCurrent(contextMap)
+        return oldState
+    }
+
+    override fun restoreThreadContext(context: CoroutineContext, oldState: MDCContextMap) {
+        setCurrent(oldState)
+    }
+
+    private fun setCurrent(contextMap: MDCContextMap) {
+        if (contextMap == null) {
+            MDC.clear()
+        } else {
+            MDC.setContextMap(contextMap)
+        }
+    }
+}
+```
+
+`MDCContext`는 `CoroutineContext`의 구현체로, 컨텍스트 스위칭(Context Switching)이 발생하면 `updateThreadContext()`에서 코루틴 컨텍스트와 MDC를 동기화하는 코루틴 컨텍스트입니다.
+즉, `MDCContext` 내부의 코루틴에서는 MDC를 문제없이 활용할 수 있습니다.
+
+## CoWebFilter
+
+기존의 Reactor 환경에서는 `traceId`를 `WebFilter`를 통해 Reactor Context에 저장했는데요.
+`WebFilter`는 Reactor 기반이므로 코루틴을 사용하기에는 어느정도 제약이 있습니다.
+그래서 이번에는 `WebFilter`가 아닌 `WebFilter`의 코루틴 변형인 `CoWebFilter`를 사용하기로 했습니다.
+
+```kotlin title="CoWebFilter.kt" showLineNumbers
+abstract class CoWebFilter : WebFilter {
+	final override fun filter(exchange: ServerWebExchange, chain: WebFilterChain): Mono<Void> {
+		val context = exchange.attributes[COROUTINE_CONTEXT_ATTRIBUTE] as CoroutineContext?
+		return mono(context ?: Dispatchers.Unconfined) {
+			filter(exchange, object : CoWebFilterChain {
+				override suspend fun filter(exchange: ServerWebExchange) {
+					exchange.attributes[COROUTINE_CONTEXT_ATTRIBUTE] = currentCoroutineContext().minusKey(Job.Key)
+					chain.filter(exchange).awaitSingleOrNull()
+				}
+			})}.then()
+	}
+
+	protected abstract suspend fun filter(exchange: ServerWebExchange, chain: CoWebFilterChain)
+
+	companion object {
+		@JvmField
+		val COROUTINE_CONTEXT_ATTRIBUTE = CoWebFilter::class.java.getName() + ".context"
+	}
+}
+
+interface CoWebFilterChain {
+	suspend fun filter(exchange: ServerWebExchange)
+}
+```
+
+`CoWebFilter`에서는 복잡한 Reactor와 코루틴 사이의 변환 과정을 추상화해 제공하고 있습니다.
+이제 `CoWebFilter`를 통해 웹 계층 로깅을 구현하고 로그를 확인해 보겠습니다.
+
+```kotlin title="LoggingFilter.kt" showLineNumbers {7, 51-54}
+@Order(Ordered.HIGHEST_PRECEDENCE)
+@Component
+class LoggingFilter : CoWebFilter() {
+    private val logger = KotlinLogging.logger(this::class.jvmName)
+
+    override suspend fun filter(exchange: ServerWebExchange, chain: CoWebFilterChain) {
+        withTraceId {
+            val request =
+                with(exchange.request) {
+                    val bytes =
+                        exchange.request
+                            .run {
+                                body.takeIf { isJson() }
+                                    ?.run {
+                                        toByteArray()
+                                            .awaitSingle()
+                                    }
+                            }
+                    val query = uri.query?.let { "?$it" } ?: ""
+
+                    logger.info { "HTTP $method $path$query ${bytes?.toString(Charsets.UTF_8)?.toPrettyJson() ?: ""}" }
+
+                    object : ServerHttpRequestDecorator(exchange.request) {
+                        override fun getBody(): Flux<DataBuffer> =
+                            if (bytes == null)
+                                exchange.request.body
+                            else
+                                Flux.just(
+                                    exchange.response
+                                        .bufferFactory()
+                                        .wrap(bytes)
+                                )
+                    }
+                }
+
+            with(exchange.response) {
+                beforeCommit {
+                    logger.info { "HTTP $statusCode" }
+                    Mono.empty()
+                }
+            }
+
+            chain.filter(
+                exchange.mutate()
+                    .request(request)
+                    .build()
+            )
+        }
+    }
+
+    private suspend fun <T> withTraceId(block: suspend CoroutineScope.() -> T): T =
+        withLoggingContext("traceId" to UUID.randomUUID().toString().take(8)) {
+            withContext(MDCContext(), block)
+        }
+
+    private fun ServerHttpRequest.isJson(): Boolean =
+        method in listOf(HttpMethod.POST, HttpMethod.PUT) && headers.contentType == MediaType.APPLICATION_JSON
+
+    private fun Flux<DataBuffer>.toByteArray(): Mono<ByteArray> =
+        DataBufferUtils.join(this)
+            .map { buffer ->
+                ByteArray(buffer.readableByteCount())
+                    .also {
+                        buffer.read(it)
+                        DataBufferUtils.release(buffer)
+                    }
+            }
+
+    private fun String.toPrettyJson() =
+        replace(Regex("\\n"), "")
+            .replace(Regex("\\s+"), "")
+            .replace(Regex("(,)(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)"), ", ")
+}
+```
+
+기존의 Reactor와 다른 부분은 `withTraceId()`에 있는데요.
+`withTraceId()`는 `withLoggingContext()`를 통해 MDC에 특정 값을 저장한 후, 해당 MDC를 코루틴 컨텍스트로 가지는 코루틴 스코프를 만들었습니다.
+해당 코루틴 스코프 내에서는 스레드에 상관없이 MDC 내의 `traceId`가 유지됩니다.
+
+```console
+2024-09-08 00:56:05.963 INFO [reactor-http-nio-2] c.f.a.g.l.LoggingFilter: [d03eecd0] HTTP GET /
+2024-09-08 00:56:06.529 INFO [lettuce-nioEventLoop-5-1] c.f.a.g.l.LoggingFilter: [d03eecd0] HTTP 200 OK
+```
+
+정상적으로 코루틴 환경에서도 `traceId`와 함께 로그 추적이 가능해진 것을 확인할 수 있습니다.
+
+# 코루틴 컨텍스트
+
+```console
+2024-09-08 00:59:24.101 INFO [reactor-http-nio-4] c.f.a.g.l.LoggingFilter: HTTP 401 UNAUTHORIZED
+```
+```console
+2024-09-08 00:59:11.585 ERROR [reactor-http-nio-2] c.f.a.g.e.GlobalExceptionHandler: TestException("테스트입니다.") at com.familidge.api.domain.user.controller.TestController.test$suspendImpl(TestController.kt:26)
+```
+
+그러나 Spring Security나 예외 처리 핸들러 등의 지점에서 응답을 조작하는 경우에 로그 추적이 되지 않는 문제가 발생했습니다.
+이는 `withTraceId()` 내부에서만 `traceId`를 가져올 수 있기 때문에 발생한 문제인데요.
+즉, 해당 코루틴 컨텍스트 외부에서는 `traceId`가 존재하지 않아 로그 추적이 불가능하므로 로그 추적이 필요한 부분에서 해당 컨텍스트를 사용하도록 수정해야 합니다.
+
+## beforeCommit
+
+우선 `beforeCommit()`이 코루틴 컨텍스트 외부에서 수행되는 경우를 먼저 고려해보겠습니다.
+`ServerHttpResponse`의 `writeWith()`를 호출하면 `beforeCommit()`도 호출되는데요.
+이때, 예외 처리 등의 코루틴 컨텍스트 외부에서 응답을 수정하기 위해 `writeWith()`를 호출하면 로그 추적이 되지 않습니다.
+
+```kotlin title="LoggingFilter.kt" showLineNumbers {3, 6}
+with(exchange.response) {
+    beforeCommit {
+        mono(coroutineContext.minusKey(Job)) {
+            logger.info { "HTTP $statusCode" }
+            null
+        }
+    }
+}
+```
+
+그래서 기존의 `beforeCommit()`이 로그 추적이 가능한 코루틴 컨텍스트를 가진 코루틴 스코프 내에서 수행되도록 수정했습니다.
+`beforeCommit()`의 반환 타입은 `Mono`이므로 반환 값을 `Mono`로 반환하는 코루틴 빌더인 `mono()`를 사용했습니다.
+
+```console
+2024-09-08 01:13:12.196 INFO [reactor-http-nio-3] c.f.a.g.l.LoggingFilter: [9d819538] HTTP GET /
+2024-09-08 01:13:12.209 INFO [reactor-http-nio-3] c.f.a.g.l.LoggingFilter: [9d819538] HTTP 401 UNAUTHORIZED
+```
+
+이전과 달리 정상적으로 Spring Security의 예외 처리에도 로그 추적이 적용되었습니다.
+
+## ErrorWebExceptionHandler
+
+그 다음, 코루틴 컨텍스트 외부에서 자체적인 로그를 출력하는 경우도 고려해보겠습니다.
+
+```kotlin title="GlobalExceptionHandler.kt" showLineNumbers {11}
+@Component
+class GlobalExceptionHandler(
+    private val objectMapper: ObjectMapper
+) : ErrorWebExceptionHandler {
+    private val logger = KotlinLogging.logger(this::class.jvmName)
+
+    override fun handle(exchange: ServerWebExchange, exception: Throwable): Mono<Void> =
+        with(exchange.response) {
+            val body = ErrorResponse(exception)
+
+            logger.error { "${exception::class.simpleName}(\"${exception.message}\") at ${exception.stackTrace[0]}" }
+
+            headers.contentType = MediaType.APPLICATION_JSON
+            statusCode = HttpStatusCode.valueOf(body.code)
+
+            writeBody(body)
+        }
+
+    private fun ServerHttpResponse.writeBody(body: Any): Mono<Void> =
+        writeWith(
+            Mono.just(
+                bufferFactory()
+                    .wrap(objectMapper.writeValueAsBytes(body))
+            )
+        )
+}
+```
+
+예외 처리는 `ErrorWebExceptionHandler`의 구현체인 `GlobalExceptionHandler`를 통해 수행되므로 로그를 출력하는 부분에서 `traceId`가 있는 코루틴 컨텍스트를 사용하면 됩니다.
+그러나 `ErrorWebExceptionHandler`는 따로 코루틴 변형을 지원하지 않아 코루틴을 사용하기 어려웠는데요.
+이는 `CoWebFilter`의 자체적인 기능을 활용해서 해결할 수 있습니다.
+
+```kotlin title="CoWebFilter.kt" showLineNumbers {3, 7, 17}
+abstract class CoWebFilter : WebFilter {
+	final override fun filter(exchange: ServerWebExchange, chain: WebFilterChain): Mono<Void> {
+		val context = exchange.attributes[COROUTINE_CONTEXT_ATTRIBUTE] as CoroutineContext?
+		return mono(context ?: Dispatchers.Unconfined) {
+			filter(exchange, object : CoWebFilterChain {
+				override suspend fun filter(exchange: ServerWebExchange) {
+					exchange.attributes[COROUTINE_CONTEXT_ATTRIBUTE] = currentCoroutineContext().minusKey(Job.Key)
+					chain.filter(exchange).awaitSingleOrNull()
+				}
+			})}.then()
+	}
+
+	protected abstract suspend fun filter(exchange: ServerWebExchange, chain: CoWebFilterChain)
+
+	companion object {
+		@JvmField
+		val COROUTINE_CONTEXT_ATTRIBUTE = CoWebFilter::class.java.getName() + ".context"
+	}
+}
+
+interface CoWebFilterChain {
+	suspend fun filter(exchange: ServerWebExchange)
+}
+```
+
+`CoWebFilter`에서는 컨텍스트 관리를 위해 `ServerWebExchange`에 현재 코루틴 컨텍스트의 `Job`을 제외한 컨텍스트를 저장해놓습니다.
+그래서 `CoWebFilter` 외부에서도 `ServerWebExchange`만 있다면 `COROUTINE_CONTEXT_ATTRIBUTE`를 통해 `CoWebFilter`에서 사용하던 코루틴 컨텍스트를 참조할 수 있습니다.
+
+```kotlin title="GlobalExceptionHandler.kt" showLineNumbers {8, 20}
+@Component
+class GlobalExceptionHandler(
+    private val objectMapper: ObjectMapper
+) : ErrorWebExceptionHandler {
+    private val logger = KotlinLogging.logger(this::class.jvmName)
+
+    override fun handle(exchange: ServerWebExchange, exception: Throwable): Mono<Void> =
+        mono(exchange.attributes[CoWebFilter.COROUTINE_CONTEXT_ATTRIBUTE] as CoroutineContext) {
+            with(exchange.response) {
+                val body = ErrorResponse(exception)
+
+                logger.error { "${exception::class.simpleName}(\"${exception.message}\") at ${exception.stackTrace[0]}" }
+
+                headers.contentType = MediaType.APPLICATION_JSON
+                statusCode = HttpStatusCode.valueOf(body.code)
+
+                writeBody(body)
+                    .awaitSingleOrNull()
+            }
+        }
+
+    private fun ServerHttpResponse.writeBody(body: Any): Mono<Void> =
+        writeWith(
+            Mono.just(
+                bufferFactory()
+                    .wrap(objectMapper.writeValueAsBytes(body))
+            )
+        )
+}
+```
+
+`beforeCommit()`의 예시와 마찬가지로 `mono()`와 `ServerWebExchange`로부터 가져온 코루틴 컨텍스트와 함께 생성한 코루틴 스코프 내에서 로그를 출력하도록 수정했습니다.
+
+```console
+2024-09-08 01:34:27.151 INFO [reactor-http-nio-2] c.f.a.g.l.LoggingFilter: [67f58739] HTTP GET /
+2024-09-08 01:34:27.259 ERROR [reactor-http-nio-2] c.f.a.g.e.GlobalExceptionHandler: [67f58739] TestException("테스트입니다.") at com.familidge.api.domain.user.controller.TestController.test$suspendImpl(TestController.kt:26)
+2024-09-08 01:34:27.265 INFO [reactor-http-nio-2] c.f.a.g.l.LoggingFilter: [67f58739] HTTP 403 FORBIDDEN
+```
+
+예외 처리 시 자체적으로 출력하던 로그에도 `traceId`와 함께 로그가 출력되는 것을 확인할 수 있습니다.

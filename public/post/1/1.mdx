@@ -1,13 +1,9 @@
 ---
-title: Spring WebFlux에서의 로깅(Logging)
-description: 리액티브 프로그래밍 환경에서의 로깅 및 로그 추적 구현
-date: 2024-04-02
+title: 리액티브 프로그래밍 환경에서의 로깅 및 로그 추적
+description: Spring WebFlux에서 로그 시스템 구축하기
+date: 2024-01-02
 tags: [Kotlin, Spring, Spring WebFlux]
 ---
-이번 글은 Spring WebFlux에서의 로깅(Logging) 및 로그 추적에 대한 글입니다.
-
-<br /><br />
-
 로그는 시스템에 있어서 중요한 역할을 하는데요.
 로그를 통해 문제를 해결하거나 사용자의 행동을 분석하는 등의 많은 작업을 수행할 수 있습니다.
 저 또한 로그를 활용하기 위해 서비스에서 발생하는 HTTP 요청 및 응답에 대한 로그를 출력하려고 했습니다.
@@ -26,7 +22,7 @@ logging:
 2024-04-02 14:34:25.657 DEBUG [reactor-http-epoll-4] o.s.w.r.f.s.s.RouterFunctionMapping: [2b5e844f-985] Mapped to org.springframework.web.reactive.function.server.HandlerFilterFunction$$Lambda$2224/0x00007f8cf4aa21b0@43585181
 ```
 
-하지만 위와 같이 핸들러 매핑 등의 불필요한 정보도 로그로 출력되는데요.
+그러나 위와 같이 핸들러 매핑 등의 불필요한 정보도 로그로 출력되는데요.
 이러한 이유로, 저는 자체적인 로그 시스템을 구축하기로 결정했습니다.
 
 # Spring AOP 기반 로깅
@@ -85,7 +81,7 @@ annotation class Handler
 이제 포인트컷을 핸들러로 지정하기 위해 포인트컷 표현식에 사용할 `@Handler`를 구현합니다.
 이렇게 되면 `@within` 지시자를 통해 핸들러에 AOP를 적용할 수 있습니다.
 
-```kotlin title="LoggingAspect.kt" showLineNumber
+```kotlin title="LoggingAspect.kt" showLineNumbers
 fun around(joinPoint: ProceedingJoinPoint): Mono<*> =
     with(joinPoint.args.first() as ServerRequest) {
         bodyToMono<String>()
@@ -268,7 +264,7 @@ class LoggingAspect {
 2024-04-04 15:46:29.560 ERROR [nioEventLoopGroup-3-3] c.d.c.e.GlobalExceptionHandler: PasswordNotMatchedException at com.doyoumate.api.auth.service.AuthenticationService.login(AuthenticationService.kt:92)
 ```
 
-하지만 예외가 발생하는 경우, 로그에 해당 예외에 대한 상태 코드가 반영되지 못하는 문제가 발생했었습니다.
+그러나 예외가 발생하는 경우, 로그에 해당 예외에 대한 상태 코드가 반영되지 못하는 문제가 발생했었습니다.
 
 ## 예외 처리
 
@@ -326,7 +322,7 @@ class GlobalExceptionHandler(
 
 문제는 이 예외 처리는 핸들러 계층 외부이므로 핸들러에 적용한 AOP가 적용되지 않는다는 점입니다.
 그래서 로깅은 핸들러가 반환하는 `200 OK`의 상태 코드를 가진 `ServerResponse`에 대해서만 수행됩니다.
-하지만 이를 해결하고자 핸들러 계층에서 예외 처리를 수행하도록 하는 것은 핸들러 계층의 책임이 너무 커지고 중복 코드가 발생하게 된다고 생각했습니다.
+그러나 이를 해결하고자 핸들러 계층에서 예외 처리를 수행하도록 하는 것은 핸들러 계층의 책임이 너무 커지고 중복 코드가 발생하게 된다고 생각했습니다.
 
 # WebFilter 기반 로깅
 
@@ -532,7 +528,7 @@ public interface ReactiveHttpOutputMessage extends HttpMessage {
 2024-04-04 17:36:33.194 INFO [nioEventLoopGroup-3-3] c.d.c.l.LoggingFilter: HTTP 200 OK
 ```
 
-제가 구현한 로그 시스템에서 아쉬운 점이 하나 있었습니다.
+제가 구축한 로그 시스템에서 아쉬운 점이 하나 있었습니다.
 많은 로그가 뒤섞이면서 어떤 요청과 응답이 하나의 통신인지 알기 어렵다는 점인데요.
 그래서 로그를 추적하기 쉽게 요청마다 임의의 식별자를 부여해주는 것을 생각했습니다.
 일반적으로 식별자를 이용한 로그 추적에는 MDC(Mapped Diagnostic Context)가 사용됩니다.

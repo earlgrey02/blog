@@ -1,0 +1,357 @@
+---
+title: JWT 기반 인증 및 인가 기능 구현
+description: JWT와 Redis를 통해 인증 및 인가 프로세스 구현하기
+date: 2024-10-20
+tags: [JavaScript, TypeScript, React.js, Kotlin, Spring]
+---
+모든 서비스들에는 유저가 로그인하는 기능이 존재하는데요.
+제가 개발하는 서비스에도 예외는 아니었습니다.
+그래서 저는 어떠한 방식을 사용해서 로그인 기능을 구현할지 고민했었습니다.
+
+# 인증 및 인가
+
+인증 및 인가에 사용되는 방식으로는 JWT(JSON Web Token) 방식과 세션(Session) 방식이 존재합니다.
+
+## 세션
+
+세션은 브라우저에서 서버에 연결된 상태의 단위인데요.
+일반적으로 세션은 브라우저의 쿠키(Cookie)에 저장되어 사용됩니다.
+세션은 쿠키에 의미 없는 세션 식별자가 저장되기 때문에 탈취의 위험성은 없다는 장점을 가지고 있으나 세션을 따로 서버에 저장해서 관리해야 하므로 서버에 부하가 발생한다는 단점을 가지고 있습니다.
+
+## JWT
+
+JWT란 JSON 형식의 데이터를 담은 암호화된 토큰입니다.
+
+![](1.png)
+
+기본적으로 JWT는 헤더(Header), 페이로드(Payload), 서명(Signature)의 구조를 가지고 있는데요.
+헤더는 서명의 해싱(Hashing) 알고리즘을 가지고 있으며 페이로드는 실제로 서버에서 사용될 데이터들을 담고 있습니다.
+마지막으로 서명은 토큰의 유효성을 검증하기 위해 존재하는 암호화된 문자열인데요.
+일반적으로 헤더와 페이로드, 토큰 생성 시 주어진 Secret key를 바탕으로 생성됩니다.
+이러한 JWT는 요청으로 주어진 토큰의 유효성을 서명만으로 판단하므로 따로 토큰을 저장하고 관리할 필요가 없다는 장점을 가지고 있으나 탈취되면 막을 수 없다는 단점을 가지고 있습니다.
+
+<br /><br />
+
+Kubernetes로 분산 컴퓨팅 환경을 구축한 제 인프라 구조를 생각하면 세션보다는 JWT의 확장성이 가지는 이점이 더욱 커진다고 생각했습니다.
+그래서 저는 JWT 기반으로 인증 및 인가를 구현하기로 했습니다.
+
+# JWT 기반 인증 및 인가
+
+이제 직접 Spring WebFlux에서 인증 및 인가 프로세스를 구현해보도록 하겠습니다.
+참고로 기본적인 JWT 관련 기능들은 제가 사전에 구현해놓은 모듈을 사용했습니다.
+
+## 인증 구현
+
+인증은 로그인이 성공하면 액세스 토큰을 클라이언트에 전달하는 방식으로 진행됩니다.
+사실 이는 곧 로그인 기능이여서 어렵지 않게 구현할 수 있습니다.
+
+```kotlin title="AuthenticationService.kt" showLineNumbers {5, 7, 10-13}
+fun login(request: LoginRequest): Mono<LoginResponse> =
+    with(request) {
+        studentRepository.findByNumber(request.studentNumber)
+            .switchIfEmpty(Mono.error(StudentNotFoundException()))
+            .filter { it.password != null }
+            .switchIfEmpty(Mono.error(AccountNotFoundException()))
+            .filter { passwordEncoder.matches(password, it.password) }
+            .switchIfEmpty(Mono.error(PasswordNotMatchedException()))
+            .map {
+                DefaultJwtAuthentication(
+                    id = it.id!!,
+                    roles = setOf(SimpleGrantedAuthority(it.role.name))
+                )
+            }
+            .map { LoginResponse(accessToken = jwtProvider.createAccessToken(it)) }
+    }
+```
+
+로그인 기능에서는 요청으로 주어진 아이디와 패스워드가 유효하면 유저의 식별자와 권한을 담은 토큰을 주도록 했습니다.
+저는 추후 인가 기능에서 사용할 Spring Security와의 호환성을 위해 구현한 `Authentication`의 구현체인 `DefaultJwtAuthentication`을 토큰과 함께 다룰 수 있도록 했습니다.
+
+## 인가 구현
+
+인가는 클라이언트가 HTTP Authorization header에 토큰을 담아 요청을 보내면 서버에서 해당 토큰을 읽어 사용자를 식별하는 방식으로 진행됩니다.
+Authorization header에는 여러 인증 타입이 있지만 표준 인증 타입으로 `Bearer` 타입을 사용하겠습니다.
+
+```kotlin title="ReactiveJwtFilter.kt" showLineNumbers {5, 9}
+class ReactiveJwtFilter(
+    private val jwtProvider: DefaultJwtProvider
+) : WebFilter {
+    override fun filter(exchange: ServerWebExchange, chain: WebFilterChain): Mono<Void> =
+        Mono.just(exchange.request.headers.getFirst(HttpHeaders.AUTHORIZATION) ?: "")
+            .map { jwtProvider.getAuthentication(it.toBearerToken()) }
+            .flatMap {
+                chain.filter(exchange)
+                    .contextWrite(ReactiveSecurityContextHolder.withAuthentication(it))
+            }
+            .onErrorResume(JwtException::class) { chain.filter(exchange) }
+}
+```
+
+인가 기능을 구현한 `ReactiveJwtFilter`에서는 Authorization header로부터 토큰을 가져와 파싱해 `Authentication`으로 변환합니다.
+Spring WebFlux에서는 컨텍스트 스위칭이 자주 발생해 `Authentication`을 스레드에 종속적인 `ThreadLocal`에 저장하지 않고 Reactor Context에 저장해야 하는데요.
+이는 `ReactiveSecurityContextHolder`의 `withAuthentication()`을 사용하면 됩니다.
+
+```kotlin showLineNumbers
+fun ServerRequest.getAuthentication(): Mono<DefaultJwtAuthentication> =
+    principal()
+        .cast<DefaultJwtAuthentication>()
+```
+
+해당 `Authentication`은 핸들러에서 `ServerRequest`를 통해 제가 구현한 `DefaultJwtAuthentcation`으로 캐스팅(Casting)해 가져올 수 있도록 확장 함수를 구현했습니다.
+
+## 프론트엔드 연동
+
+이제 프론트엔드에서는 권한이 필요한 API에 접근하는 경우, 토큰을 함께 포함해서 요청해야 합니다.
+저는 AJAX(Asynchronous JavaScript And XML) 통신에 Axios를 사용하고 있으므로 Axios의 인터셉터(Interceptor)를 사용하겠습니다.
+
+```ts title="api.ts" showLineNumbers {2, 4}
+api.interceptors.request.use(async config => {
+  const accessToken = await AsyncStorage.getItem('accessToken')
+
+  if (accessToken) config.headers.Authorization = `Bearer ${accessToken}`
+
+  return config
+})
+```
+
+Axios를 통해 요청을 보낼 때마다 Async Storage에 저장된 액세스 토큰을 HTTP 헤더에 포함하도록 했는데요.
+`Bearer` 타입의 Authorization header는 `Bearer <Access token>`의 형태의 문자열을 전달하면 됩니다.
+저는 React Native를 사용하므로 토큰을 로컬 스토리지(Local Storage)나 쿠키가 아닌 Async Storage에 저장했습니다.
+
+# 로그인 유지
+
+현재 구현된 인증 및 인가 기능에서는 토큰의 유효 시간이 지나면 다시 로그인을 해야 하는데요.
+일반적으로 앱에서 계속해서 로그인을 시도하도록 하는 것은 UX(User Experience) 관점에서 좋은 방법이 아닙니다.
+그래서 로그인 유지 기능도 구현하기로 했습니다.
+
+<br /><br />
+
+JWT 기반 인증 및 인가에서는 로그인 시 토큰을 재발급 받을 수 있는 리프레쉬 토큰도 액세스 토큰과 함께 발급해주는 방법을 사용할 수 있습니다.
+일반적으로 리프레쉬 토큰은 액세스 토큰보다 유효 기간이 길기 때문에 로그인 유지를 구현하는 데에는 문제가 없습니다.
+또한 리프레쉬 토큰을 사용하면 액세스 토큰의 유효 기간을 줄여서 탈취 위험성을 줄일 수도 있습니다.
+물론 리프레쉬 토큰을 저장해야 되는 공간이 따로 필요하다는 단점도 있지만, 저는 Redis를 사용해 이러한 단점을 최대한 보완하고자 했습니다.
+
+## Redis
+
+Redis는 Key-Value 기반 인메모리(In-memory) 저장소입니다.
+메모리를 사용하는 특징때문에 가볍고 높은 성능을 가지지만 휘발성이라는 단점이 있어 메인 저장소로는 사용하기 힘든데요.
+그러나 리프레쉬 토큰은 손실되어도 서비스에 치명적이지 않고 영원히 저장될 필요가 없으므로 Redis에 저장하기 적합합니다.
+그래서 저는 리프레쉬 토큰의 저장소로 Redis를 사용하기로 했습니다.
+
+## 로그인 유지 구현
+
+이제 Redis를 사용해 로그인 유지 기능을 구현해 보겠습니다.
+
+```kotlin title="RefreshTokenRepository.kt" showLineNumbers {20}
+@Repository
+class RefreshTokenRepository(
+    private val redisTemplate: ReactiveRedisTemplate<String, String>,
+    @Value("\${jwt.refreshTokenExpire}")
+    private val expire: Long
+) {
+    fun findByStudentId(studentId: String): Mono<RefreshToken> =
+        redisTemplate.opsForValue()
+            .get(studentId.toKey())
+            .map {
+                RefreshToken(
+                    studentId = studentId,
+                    content = it
+                )
+            }
+
+    fun save(refreshToken: RefreshToken): Mono<RefreshToken> =
+        with(refreshToken) {
+            redisTemplate.opsForValue()
+                .set(studentId.toKey(), content, Duration.ofMinutes(expire))
+                .thenReturn(this)
+        }
+
+    fun deleteByStudentId(studentId: String): Mono<Boolean> =
+        redisTemplate.opsForValue()
+            .delete(studentId.toKey())
+
+    private fun String.toKey(): String = "refreshToken:$this"
+}
+```
+
+앞서, Redis에 리프레쉬 토큰을 조회, 저장, 삭제할 수 있는 `RefreshTokenRepository`를 구현헀습니다.
+또한 저장 시에는 프로퍼티로 설정한 유효 시간 동안만 Redis에 저장되도록 했습니다.
+
+```kotlin title="AuthenticationHandler.kt" showLineNumbers {6, 10}
+fun refresh(request: RefreshRequest): Mono<RefreshResponse> =
+    with(request) {
+        Mono.fromCallable { jwtProvider.getAuthentication(refreshToken) }
+            .onErrorResume(JwtException::class) { Mono.error(InvalidTokenException()) }
+            .flatMap { authentication ->
+                refreshTokenRepository.findByStudentId(authentication.id)
+                    .switchIfEmpty(Mono.error(TokenNotFoundException()))
+                    .filter { it.content == refreshToken }
+                    .switchIfEmpty(Mono.error(InvalidAccessException()))
+                    .map { RefreshResponse(accessToken = jwtProvider.createAccessToken(authentication),) }
+            }
+    }
+```
+
+이제 `RefreshTokenRepository`를 사용해 리프레쉬 토큰을 확인하고 토큰을 재발급하는 기능을 구현합니다.
+
+```kotlin title="AuthenticationHandler.kt" showLineNumbers {16-20, 26}
+fun login(request: LoginRequest): Mono<LoginResponse> =
+    with(request) {
+        studentRepository.findByNumber(request.studentNumber)
+            .switchIfEmpty(Mono.error(StudentNotFoundException()))
+            .filter { it.password != null }
+            .switchIfEmpty(Mono.error(AccountNotFoundException()))
+            .filter { passwordEncoder.matches(password, it.password) }
+            .switchIfEmpty(Mono.error(PasswordNotMatchedException()))
+            .map {
+                DefaultJwtAuthentication(
+                    id = it.id!!,
+                    roles = setOf(SimpleGrantedAuthority(it.role.name))
+                )
+            }
+            .zipWhen {
+                refreshTokenRepository.save(
+                    RefreshToken(
+                        studentId = it.id,
+                        content = jwtProvider.createRefreshToken(it)
+                    )
+                )
+            }
+            .map { (authentication, refreshToken) ->
+                LoginResponse(
+                    accessToken = jwtProvider.createAccessToken(authentication),
+                    refreshToken = refreshToken.content
+                )
+            }
+    }
+```
+
+또한 로그인 시에도 리프레쉬 토큰을 저장하도록 수정했습니다.
+
+```console
+> keys *
+1) "refreshToken:664c0480a158f8347d17ecd9"
+> get refreshToken:664c0480a158f8347d17ecd9
+"eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjY2NGMwNDgwYTE1OGY4MzQ3ZDE3ZWNkOSIsInJvbGVzIjoiVVNFUiIsImlhdCI6MTcxODg5NTgyOSwiZXhwIjoxNzE5NDk1NzY5fQ.PBKFlbWGVlmI-HinqocIEY_G_UWvS0DL36tzaZgO3QY"
+```
+
+로그인 시, 실제로 Redis에 리프레쉬 토큰이 저장되는 것을 확인할 수 있습니다.
+
+## 프론트엔드 연동
+
+이제 프론트엔드에서는 로그인 유지를 위해 주기적으로 토큰 재발급 API(Application Programming Interface)를 사용해야 하는데요.
+해당 주기를 실제로 계산해서 요청을 보내는 풀링(Polling) 방식보다는 API의 응답이 `401 Unauthorized`의 경우에만 재발급을 받도록 하는 방식이 더 효율적입니다.
+이는 앞서 사용했던 Axios의 인터셉터를 사용해서 간단하게 구현할 수 있습니다.
+
+```ts title="api.ts" showLineNumbers {3, 7, 9-10}
+api.interceptors.response.use(null, async error => {
+  if (!error.config.isRefreshTry && error.response.status === 401) {
+    const refreshToken = await AsyncStorage.getItem('refreshToken')
+    error.config.isRefreshTry = true
+
+    if (refreshToken) {
+      const response = await refresh({ refreshToken })
+
+      await AsyncStorage.setItem('accessToken', response.accessToken)
+      await AsyncStorage.setItem('refreshToken', response.refreshToken)
+
+      return api.request(error.config)
+    }
+  }
+
+  return Promise.reject(error)
+})
+```
+
+API 요청 시, 상태 코드가 `401 Unauthorized`인 경우에 Async Storage에 저장된 리프레쉬 토큰으로 토큰 재발급 요청을 보내도록 했습니다.
+토큰을 재발급 받으면 새로운 액세스 토큰과 함께 기존에 실패한 요청을 다시 보내도록 합니다.
+이때, `error.config.isReferesh`이라는 프로퍼티를 사용해 토큰 재발급 요청 여부를 확인하도록 했는데요.
+만약 토큰 재발급 요청 여부를 확인하지 않으면 토큰 재발급 응답이 `401 Unauthorized`인 경우에도 인터셉터에 의해 재귀적으로 토큰 재발급 요청을 하는 문제가 발생할 수 있습니다.
+
+```console
+2024-06-20 00:03:49.194 INFO [reactor-http-nio-2] c.d.c.l.LoggingFilter: [77683557] HTTP GET /student/me
+2024-06-20 00:03:49.240 INFO [reactor-http-nio-2] c.d.c.l.LoggingFilter: [77683557] HTTP 401 UNAUTHORIZED
+2024-06-20 00:03:49.256 INFO [reactor-http-nio-2] c.d.c.l.LoggingFilter: [f489ad81] HTTP POST /auth/refresh {"refreshToken":"eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjY2NGMwNDgwYTE1OGY4MzQ3ZDE3ZWNkOSIsInJvbGVzIjoiVVNFUiIsImlhdCI6MTcxODQ2NjczNiwiZXhwIjoxNzE5MDY2Njc2fQ.rImHUpTZgxtrLc1X_l8bEC7WPwAK7Tirt-5c-kycqA8"}
+2024-06-20 00:03:49.455 INFO [lettuce-nioEventLoop-6-1] c.d.c.l.LoggingFilter: [f489ad81] HTTP 200 OK
+2024-06-20 00:03:49.467 INFO [reactor-http-nio-2] c.d.c.l.LoggingFilter: [3174964d] HTTP GET /student/me
+2024-06-20 00:03:49.547 INFO [nioEventLoopGroup-3-7] c.d.c.l.LoggingFilter: [3174964d] HTTP 200 OK
+```
+
+액세스 토큰이 만료되어 `401 Unauthorized`인 응답이 온 경우, 자동으로 토큰을 재발급 받고 실패한 요청을 재시도하는 것을 확인할 수 있습니다.
+
+# 보안 취약점
+
+제가 구현한 리프레쉬 토큰을 통한 토큰 재발급에는 탈취의 위험성이 있었는데요.
+당연히 리프레쉬 토큰도 토큰이므로 탈취될 수 있습니다.
+이는 완전히 막지는 못해도 어느 정도 예방할 수 있는 방안이 있습니다.
+
+## 탈취 시도 처리
+
+우선 리프레쉬 토큰을 탈취하는 시도에 대한 방어를 하기로 했는데요.
+토큰 재발급 시, 리프레쉬 토큰이 Redis에 존재하지 않거나 만료된 경우는 일반적인 경우이므로 문제가 되지 않습니다.
+그러나 리프레쉬 토큰이 Redis에 존재하는데 요청으로 주어진 토큰과 내용이 일치하지 않는 경우는 탈취 시도로 볼 수 있습니다.
+
+```kotlin title="AuthenticationHandler.kt" showLineNumbers {10-11}
+fun refresh(request: RefreshRequest): Mono<RefreshResponse> =
+    with(request) {
+        Mono.fromCallable { jwtProvider.getAuthentication(refreshToken) }
+            .onErrorResume(JwtException::class) { Mono.error(InvalidTokenException()) }
+            .flatMap { authentication ->
+                refreshTokenRepository.findByStudentId(authentication.id)
+                    .switchIfEmpty(Mono.error(TokenNotFoundException()))
+                    .filter { it.content == refreshToken }
+                    .switchIfEmpty(Mono.defer {
+                        refreshTokenRepository.deleteByStudentId(authentication.id)
+                            .then(Mono.error(InvalidAccessException()))
+                    })
+                    .map { RefreshResponse( accessToken = jwtProvider.createAccessToken(authentication),) }
+            }
+    }
+```
+
+이 경우, 단순히 예외를 던지는 것에서 끝나지 않고 해당 유저의 리프레쉬 토큰을 삭제하는 조치를 취하도록 했습니다.
+
+<br /><br />
+
+이때, `switchIfEmpty()`은 기본적으로 Eager Evaluation의 특징을 가지고 있는데요.
+이러면 `switchIfEmpty()`가 호출되기 이전에 미리 내부 값인 `refreshTokenRepository.deleteByStudentId()`가 항상 호출되어 어떤 경우든 토큰이 삭제되는 문제가 발생하게 됩니다.
+이를 방지하기 위해 `defer()`를 통해 연산을 지연시켰습니다.
+
+## 리프레쉬 토큰 재발급
+
+앞서, 리프레쉬 토큰도 탈취의 위험성이 있다고 설명드렸는데요.
+이는 리프레쉬 토큰을 토큰 재발급 시에 액세스 토큰과 함께 재발급하는 방법으로 간단하게 탈취 가능성을 줄일 수 있습니다.
+당연히 이전에 사용하던 리프레쉬 토큰은 삭제해야 합니다.
+
+```kotlin title="AuthenticationHandler.kt" showLineNumbers {14-19, 24}
+fun refresh(request: RefreshRequest): Mono<RefreshResponse> =
+    with(request) {
+        Mono.fromCallable { jwtProvider.getAuthentication(refreshToken) }
+            .onErrorResume(JwtException::class) { Mono.error(InvalidTokenException()) }
+            .flatMap { authentication ->
+                refreshTokenRepository.findByStudentId(authentication.id)
+                    .switchIfEmpty(Mono.error(TokenNotFoundException()))
+                    .filter { it.content == refreshToken }
+                    .switchIfEmpty(Mono.defer {
+                        refreshTokenRepository.deleteByStudentId(authentication.id)
+                            .then(Mono.error(InvalidAccessException()))
+                    })
+                    .flatMap {
+                        refreshTokenRepository.save(
+                            RefreshToken(
+                                studentId = it.studentId,
+                                content = jwtProvider.createRefreshToken(authentication)
+                            )
+                        )
+                    }
+                    .map {
+                        RefreshResponse(
+                            accessToken = jwtProvider.createAccessToken(authentication),
+                            refreshToken = it.content
+                        )
+                    }
+            }
+    }
+```
+
+Redis 내의 똑같은 Key를 가진 토큰은 새로운 토큰의 저장과 함께 삭제됩니다.
