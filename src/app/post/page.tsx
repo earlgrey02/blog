@@ -55,7 +55,7 @@ const Page = () => {
           ))}
         </Motion>
       </div>
-      <div className="min-h-[36rem]">
+      <div className="min-h-[30rem] md:min-h-[36rem]">
         <PostList
           posts={pages[pageIndex]}
           key={pageIndex}
