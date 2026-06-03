@@ -1,1 +1,65 @@
+@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css");
 @import "tailwindcss";
+
+:root {
+    --background: #fafbf9;
+    --foreground: #20262b;
+    --muted: #65717a;
+    --subtle: #8a9299;
+    --surface: #ffffff;
+    --surface-strong: #ffffff;
+    --border: #e3e9e5;
+    --border-strong: #cbd7d2;
+    --accent: #2f7f86;
+    --accent-strong: #1d5d66;
+    --accent-soft: #edf8f6;
+    --highlight: #bf7350;
+    --tag: #f4f8f6;
+}
+
+:root[class~=dark] {
+    --background: #111817;
+    --foreground: #edf3ef;
+    --muted: #aab6b1;
+    --subtle: #7f8d88;
+    --surface: #17201e;
+    --surface-strong: #141c1a;
+    --border: #273633;
+    --border-strong: #41534f;
+    --accent: #7fc6c5;
+    --accent-strong: #b5e6e2;
+    --accent-soft: #1d312f;
+    --highlight: #e0a27e;
+    --tag: #1c2927;
+}
+
+@theme inline {
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-muted: var(--muted);
+    --color-subtle: var(--subtle);
+    --color-surface: var(--surface);
+    --color-surface-strong: var(--surface-strong);
+    --color-border: var(--border);
+    --color-border-strong: var(--border-strong);
+    --color-accent: var(--accent);
+    --color-accent-strong: var(--accent-strong);
+    --color-accent-soft: var(--accent-soft);
+    --color-highlight: var(--highlight);
+    --color-tag: var(--tag);
+    --shadow-card: 0 18px 45px rgb(31 38 43 / 9%);
+}
+
+html {
+    @apply bg-background text-foreground select-none;
+    color-scheme: light dark;
+    font-family: Pretendard;
+}
+
+body {
+    @apply min-h-screen bg-background antialiased;
+}
+
+::selection {
+    @apply bg-accent-soft text-accent-strong;
+}
