@@ -9,7 +9,10 @@ interface Props {
 }
 
 const metadata = {
-  title: 'earlgrey02의 블로그'
+  title: {
+    default: 'earlgrey02의 블로그',
+    template: '%s | earlgrey02의 블로그'
+  }
 } satisfies Metadata
 
 const Layout = ({ children }: Props) => {
