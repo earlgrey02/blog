@@ -1,6 +1,8 @@
+import { getLatestPostDate, posts } from '@/lib/posts'
 import Link from 'next/link'
 
-const posts = []
+const latestPostDate = getLatestPostDate()
+const recentPosts = posts.slice(0, 3)
 
 const Page = () => {
   return (
@@ -33,7 +35,7 @@ const Intro = () => {
         </div>
         <div>
           <dt className="text-subtle">Updated</dt>
-          <dd className="mt-1 font-medium text-foreground">2026.06</dd>
+          <dd className="mt-1 font-medium text-foreground">{latestPostDate ?? '-'}</dd>
         </div>
       </dl>
     </section>
@@ -56,7 +58,7 @@ const PostList = () => {
         </div>
 
         <div className="grid gap-5 md:grid-cols-3">
-          {posts.map(post => (
+          {recentPosts.map(post => (
             <Link
               key={post.id}
               href={`/posts/${post.id}`}
