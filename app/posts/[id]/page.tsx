@@ -12,11 +12,7 @@ interface Props {
 
 const Page = async ({ params }: Props) => {
   const { id } = await params
-  const post = posts.find(post => post.id == id)
-
-  if (!post) {
-    notFound()
-  }
+  const post = posts.find(post => post.id == id) ?? notFound()
 
   return (
     <main className="min-h-screen bg-background text-foreground">
@@ -47,15 +43,22 @@ const generateStaticParams = () => posts.map(post => ({ id: post.id }))
 
 const generateMetadata = async ({ params }: Props) => {
   const { id } = await params
-  const post = posts.find(post => post.id == id)
-
-  if (!post) {
-    return
-  }
+  const post = posts.find(post => post.id == id) ?? notFound()
 
   return {
     title: post.title,
-    description: post.description
+    description: post.description,
+    alternates: {
+      canonical: post.url
+    },
+    openGraph: {
+      type: 'article',
+      url: post.url,
+      title: post.title,
+      description: post.description,
+      publishedTime: post.date,
+      tags: post.tags
+    }
   } satisfies Metadata
 }
 

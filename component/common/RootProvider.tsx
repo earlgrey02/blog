@@ -1,7 +1,9 @@
 'use client'
 
-import { ThemeProvider } from 'next-themes'
 import type { ReactNode } from 'react'
+import { ThemeProvider } from 'next-themes'
+import { Analytics } from '@vercel/analytics/next'
+import { SpeedInsights } from '@vercel/speed-insights/next'
 
 interface Props {
   children: ReactNode
@@ -9,9 +11,21 @@ interface Props {
 
 const RootProvider = ({ children }: Props) => {
   return (
-    <ThemeProvider attribute="class" disableTransitionOnChange>
+    <VercelProvider>
+      <ThemeProvider attribute="class" disableTransitionOnChange>
+        {children}
+      </ThemeProvider>
+    </VercelProvider>
+  )
+}
+
+const VercelProvider = ({ children }: Props) => {
+  return (
+    <>
       {children}
-    </ThemeProvider>
+      <Analytics />
+      <SpeedInsights />
+    </>
   )
 }
 

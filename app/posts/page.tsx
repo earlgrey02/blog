@@ -12,15 +12,15 @@ interface Props {
   }>
 }
 
-const metadata = {
-  title: 'Posts'
-} satisfies Metadata
-
 const PAGE_SIZE = 5
 const tags = Array.from(new Set(posts.flatMap(post => post.tags)))
 const controlClassName =
   'border border-border text-xs font-medium text-muted transition hover:border-border-strong hover:text-foreground md:text-sm'
 const activeControlClassName = 'border-accent bg-accent text-background hover:border-accent hover:text-background'
+
+const metadata = {
+  title: 'Posts'
+} satisfies Metadata
 
 const createPostsLink = ({ page, tag }: { page?: number; tag?: string }) => {
   const params = new URLSearchParams()
