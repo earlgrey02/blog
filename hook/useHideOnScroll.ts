@@ -13,7 +13,6 @@ const HIDDEN_HEIGHT = 80
 const useHideOnScroll = (): HideOnScrollStates => {
   const [isHidden, setIsHidden] = useState(false)
   const lastScrollY = useRef(0)
-
   const handleScroll = useCallback(() => {
     const currentScrollY = window.scrollY
     const scrollDelta = currentScrollY - lastScrollY.current

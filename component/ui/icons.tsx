@@ -43,12 +43,4 @@ const SunIcon = (props: Props) => {
   )
 }
 
-const ArrowLeftIcon = (props: Props) => {
-  return (
-    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" {...props}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M19 12H5m6-6-6 6 6 6" />
-    </svg>
-  )
-}
-
-export { ArrowLeftIcon, GitHubIcon, HomeIcon, MoonIcon, SunIcon }
+export { GitHubIcon, HomeIcon, MoonIcon, SunIcon }

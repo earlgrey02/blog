@@ -8,10 +8,8 @@ interface Props {
   children: ReactNode
 }
 
-const siteUrl = process.env.NEXT_URL ?? 'http://localhost:3000'
-
-const metadata = {
-  metadataBase: new URL(siteUrl),
+const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_URL),
   title: {
     default: 'earlgrey02의 블로그',
     template: '%s | earlgrey02의 블로그'
@@ -44,7 +42,7 @@ const metadata = {
       'max-snippet': -1
     }
   }
-} satisfies Metadata
+}
 
 const Layout = ({ children }: Props) => {
   return (
