@@ -2,7 +2,7 @@ import PostContent from '@/component/post/PostContent'
 import { posts } from '@/lib/mdx/utils'
 import { format } from 'date-fns'
 import { notFound } from 'next/navigation'
-import type { Metadata } from 'next'
+import { Metadata } from 'next'
 
 interface Props {
   params: Promise<{
@@ -22,7 +22,9 @@ const Page = async ({ params }: Props) => {
             <div className="text-xs font-medium text-subtle md:text-sm">{format(post.date, 'yyyy-MM-dd')}</div>
             <div className="flex flex-wrap gap-1.5 text-xs font-medium md:gap-2 md:text-sm">
               {post.tags.map(tag => (
-                <span className="rounded-full border border-border bg-tag px-2 py-0.5 text-muted md:px-2.5 md:py-1" key={tag}>
+                <span
+                  className="rounded-full border border-border bg-tag px-2 py-0.5 text-muted md:px-2.5 md:py-1"
+                  key={tag}>
                   {tag}
                 </span>
               ))}
@@ -41,7 +43,7 @@ const Page = async ({ params }: Props) => {
 
 const generateStaticParams = () => posts.map(post => ({ id: post.id }))
 
-const generateMetadata = async ({ params }: Props) => {
+const generateMetadata = async ({ params }: Props): Promise<Metadata> => {
   const { id } = await params
   const post = posts.find(post => post.id == id) ?? notFound()
 
@@ -59,7 +61,7 @@ const generateMetadata = async ({ params }: Props) => {
       publishedTime: post.date,
       tags: post.tags
     }
-  } satisfies Metadata
+  }
 }
 
 export { generateMetadata, generateStaticParams }
