@@ -3,7 +3,8 @@
 import { cn } from '@/lib/tailwind/utils'
 import type { Post } from '@/lib/mdx/utils'
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { useState } from 'react'
 
 interface Props {
   posts: Post[]
@@ -14,25 +15,6 @@ const PAGE_SIZE = 5
 const controlClassName =
   'border border-border text-xs font-medium text-muted transition hover:border-border-strong hover:text-foreground md:text-sm'
 const activeControlClassName = 'border-accent bg-accent text-background hover:border-accent hover:text-background'
-
-const PostList = ({ posts, tags }: Props) => {
-  const searchParams = useSearchParams()
-  const selectedTag = searchParams.get('tag') ?? undefined
-  const page = searchParams.get('page') ?? undefined
-  const currentPage = page ? Number(page) : 1
-  const filteredPosts = selectedTag ? posts.filter(post => post.tags.includes(selectedTag)) : posts
-  const startIndex = (currentPage - 1) * PAGE_SIZE
-  const paginatedPosts = filteredPosts.slice(startIndex, startIndex + PAGE_SIZE)
-
-  return (
-    <>
-      <PostFilter selectedTag={selectedTag} tags={tags} />
-      <PostItems posts={paginatedPosts} />
-      <PostPaginator currentPage={currentPage} posts={filteredPosts} selectedTag={selectedTag} />
-    </>
-  )
-}
-
 const createPostsLink = ({ page, tag }: { page?: number; tag?: string }) => {
   const params = new URLSearchParams()
 
@@ -49,27 +31,69 @@ const createPostsLink = ({ page, tag }: { page?: number; tag?: string }) => {
   return query ? `/posts?${query}` : '/posts'
 }
 
-const PostFilter = ({ selectedTag, tags }: { selectedTag?: string; tags: string[] }) => {
+const PostList = ({ posts, tags }: Props) => {
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const [selectedTag, setSelectedTag] = useState(searchParams.get('tag') ?? undefined)
+  const [currentPage, setCurrentPage] = useState(Number(searchParams.get('page')) || 1)
+  const filteredPosts = selectedTag ? posts.filter(post => post.tags.includes(selectedTag)) : posts
+  const startIndex = (currentPage - 1) * PAGE_SIZE
+  const paginatedPosts = filteredPosts.slice(startIndex, startIndex + PAGE_SIZE)
+  const totalPages = Math.ceil(filteredPosts.length / PAGE_SIZE)
+
+  const selectTag = (tag?: string) => {
+    setSelectedTag(tag)
+    setCurrentPage(1)
+    router.replace(createPostsLink({ tag }))
+  }
+
+  const selectPage = (page: number) => {
+    setCurrentPage(page)
+    router.replace(createPostsLink({ page, tag: selectedTag }))
+  }
+
   return (
-    <div className="mt-8 flex flex-wrap gap-2 md:mt-10">
-      <Link
-        className={cn(controlClassName, 'rounded-full px-2.5 py-1.5 md:px-3', !selectedTag && activeControlClassName)}
-        href="/posts">
-        All
-      </Link>
-      {tags.map(tag => (
-        <Link
-          className={cn(
-            controlClassName,
-            'rounded-full px-2.5 py-1.5 md:px-3',
-            tag === selectedTag && activeControlClassName
-          )}
-          href={createPostsLink({ tag })}
-          key={tag}>
-          {tag}
-        </Link>
-      ))}
-    </div>
+    <>
+      <div className="mt-8 flex flex-wrap gap-2 md:mt-10">
+        <button
+          className={cn(controlClassName, 'rounded-full px-2.5 py-1.5 md:px-3', !selectedTag && activeControlClassName)}
+          type="button"
+          onClick={() => selectTag()}>
+          All
+        </button>
+        {tags.map(tag => (
+          <button
+            className={cn(
+              controlClassName,
+              'rounded-full px-2.5 py-1.5 md:px-3',
+              tag === selectedTag && activeControlClassName
+            )}
+            type="button"
+            onClick={() => selectTag(tag)}
+            key={tag}>
+            {tag}
+          </button>
+        ))}
+      </div>
+      <PostItems posts={paginatedPosts} />
+      {totalPages > 1 && (
+        <nav className="mt-8 flex items-center justify-center gap-1.5 md:mt-10 md:gap-2">
+          {Array.from({ length: totalPages }, (_, index) => index + 1).map(page => (
+            <button
+              className={cn(
+                controlClassName,
+                'inline-flex size-9 items-center justify-center rounded-full md:size-10',
+                page === currentPage && activeControlClassName
+              )}
+              type="button"
+              onClick={() => selectPage(page)}
+              key={page}>
+              {page}
+            </button>
+          ))}
+        </nav>
+      )}
+    </>
   )
 }
 
@@ -103,39 +127,6 @@ const PostItems = ({ posts }: { posts: Post[] }) => {
         <div className="py-10 text-sm leading-6 text-muted md:py-12">아직 작성된 글이 없습니다.</div>
       )}
     </div>
-  )
-}
-
-const PostPaginator = ({
-  currentPage,
-  posts,
-  selectedTag
-}: {
-  currentPage: number
-  posts: Post[]
-  selectedTag?: string
-}) => {
-  const totalPages = Math.ceil(posts.length / PAGE_SIZE)
-
-  if (totalPages <= 1) {
-    return
-  }
-
-  return (
-    <nav className="mt-8 flex items-center justify-center gap-1.5 md:mt-10 md:gap-2">
-      {Array.from({ length: totalPages }, (_, index) => index + 1).map(page => (
-        <Link
-          className={cn(
-            controlClassName,
-            'inline-flex size-9 items-center justify-center rounded-full md:size-10',
-            page === currentPage && activeControlClassName
-          )}
-          href={createPostsLink({ page, tag: selectedTag })}
-          key={page}>
-          {page}
-        </Link>
-      ))}
-    </nav>
   )
 }
 
