@@ -1,0 +1,49 @@
+---
+import Layout from '../layouts/Layout.astro'
+import PostCard from '../components/PostCard.astro'
+import { getPosts } from '../lib/post.ts'
+
+const posts = await getPosts()
+---
+
+<Layout>
+  <main id="main" class="min-h-screen">
+    <section class="mx-auto max-w-5xl px-5 py-12 md:pt-24 md:pb-20">
+      <p
+        class="mb-4 inline-flex rounded-full border border-border bg-surface px-2.5 py-1 text-xs font-medium text-highlight md:mb-5 md:px-3 md:text-sm">
+        Notes and logs
+      </p>
+      <h1 class="text-3xl leading-[1.08] font-semibold tracking-tight md:text-6xl md:leading-[1.08]">
+        earlgrey02의 블로그
+      </h1>
+      <p class="mt-5 max-w-2xl text-sm leading-7 text-muted md:mt-6 md:text-lg md:leading-8">
+        생각과 경험을 차분하게 정리하는 개인 기록 공간입니다.
+      </p>
+      <dl class="mt-8 grid max-w-md grid-cols-2 gap-3 border-y border-border py-4 text-xs md:mt-10 md:py-5 md:text-sm">
+        <div>
+          <dt class="text-subtle">Posts</dt>
+          <dd class="mt-1 font-medium">{posts.length}</dd>
+        </div>
+        <div>
+          <dt class="text-subtle">Updated</dt>
+          <dd class="mt-1 font-medium">{posts[0]?.data.date.toISOString().slice(0, 10)}</dd>
+        </div>
+      </dl>
+    </section>
+    <section class="border-y border-border bg-surface-strong">
+      <div class="mx-auto max-w-5xl px-5 py-11 md:py-16">
+        <div class="mb-6 flex items-end justify-between md:mb-8">
+          <div>
+            <p class="text-xs font-medium text-highlight md:text-sm">Recent Posts</p>
+            <h2 class="mt-1.5 text-xl font-semibold tracking-tight md:mt-2 md:text-3xl">최근 글</h2>
+          </div>
+          <a href="/posts" class="text-xs font-medium text-accent hover:text-accent-strong md:text-sm"> 전체 보기 </a>
+        </div>
+        <div class="grid gap-4 md:grid-cols-3 md:gap-5">
+          {posts.slice(0, 3).map(post => <PostCard post={post} />)}
+        </div>
+      </div>
+    </section>
+    <footer class="mx-auto max-w-5xl px-5 py-7 text-xs text-subtle md:py-8 md:text-sm">© 2026 earlgrey02</footer>
+  </main>
+</Layout>
