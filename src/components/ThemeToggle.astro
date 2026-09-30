@@ -1,0 +1,23 @@
+<button class="icon-button" id="theme-toggle" type="button">
+  <svg class="dark:hidden" fill="currentColor" viewBox="0 0 24 24">
+    <path d="M21 14.6A8.46 8.46 0 0 1 9.4 3a.75.75 0 0 0-.82-1.1 10.5 10.5 0 1 0 12.52 12.52.75.75 0 0 0-1.1-.82Z"
+    ></path>
+  </svg>
+  <svg class="hidden dark:block" fill="currentColor" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+    <path
+      stroke-linecap="round"
+      d="M12 3v1.5M12 19.5V21M4.22 4.22l1.06 1.06M18.72 18.72l1.06 1.06M3 12h1.5M19.5 12H21M4.22 19.78l1.06-1.06M18.72 5.28l1.06-1.06"
+    ></path>
+    <circle cx="12" cy="12" r="4"></circle>
+  </svg>
+</button>
+
+<script>
+  const button = document.querySelector<HTMLButtonElement>('#theme-toggle')!
+
+  button.addEventListener('click', () => {
+    const dark = document.documentElement.classList.toggle('dark')
+
+    localStorage.setItem('theme', dark ? 'dark' : 'light')
+  })
+</script>
