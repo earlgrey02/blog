@@ -1,0 +1,64 @@
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+@import 'tailwindcss';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: Pretendard;
+  --font-mono: 'JetBrains Mono';
+  --color-background: #fafbf9;
+  --color-foreground: #20262b;
+  --color-muted: #65717a;
+  --color-subtle: #8a9299;
+  --color-surface: #ffffff;
+  --color-surface-strong: #ffffff;
+  --color-border: #e3e9e5;
+  --color-border-strong: #cbd7d2;
+  --color-accent: #2f7f86;
+  --color-accent-strong: #1d5d66;
+  --color-accent-soft: #edf8f6;
+  --color-highlight: #bf7350;
+  --color-tag: #f4f8f6;
+}
+
+html.dark {
+  --color-background: #111817;
+  --color-foreground: #edf3ef;
+  --color-muted: #aab6b1;
+  --color-subtle: #7f8d88;
+  --color-surface: #17201e;
+  --color-surface-strong: #141c1a;
+  --color-border: #273633;
+  --color-border-strong: #41534f;
+  --color-accent: #7fc6c5;
+  --color-accent-strong: #b5e6e2;
+  --color-accent-soft: #1d312f;
+  --color-highlight: #e0a27e;
+  --color-tag: #1c2927;
+}
+
+@layer base {
+  html {
+    background: var(--color-background);
+    color: var(--color-foreground);
+    color-scheme: light;
+    font-family: var(--font-sans);
+    word-break: keep-all;
+    overflow-wrap: break-word;
+  }
+
+  html.dark {
+    color-scheme: dark;
+  }
+
+  :focus-visible {
+    outline: 0.125rem solid var(--color-accent);
+    outline-offset: 0.25rem;
+  }
+
+  ::selection {
+    background: var(--color-accent-soft);
+    color: var(--color-accent-strong);
+  }
+}
