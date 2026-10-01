@@ -1,4 +1,14 @@
+html:has(.post-toc) {
+  scroll-behavior: auto;
+}
+
 .post-content {
+  & h1,
+  & :is(h2, h3),
+  & :is(p, ul, ol) {
+    line-height: 1.75rem;
+  }
+
   & :is(h1, h2, h3, h4) {
     margin: 2.25rem 0 1rem;
     font-weight: 600;
@@ -11,18 +21,15 @@
     border-top: 0.0625rem solid var(--color-border);
     padding-top: 2rem;
     font-size: 1.25rem;
-    line-height: 1.75rem;
   }
 
   & :is(h2, h3) {
     font-size: 1.125rem;
-    line-height: 1.75rem;
   }
 
   & :is(p, ul, ol) {
     margin-top: 1rem;
     font-size: 0.85rem;
-    line-height: 1.75rem;
   }
 
   & a {
@@ -52,8 +59,24 @@
     list-style: decimal;
   }
 
-  & blockquote {
+  & blockquote,
+  & table,
+  & img {
     margin: 1.5rem 0;
+  }
+
+  & table,
+  & :is(th, td),
+  & img {
+    border: 0.0625rem solid var(--color-border);
+  }
+
+  & table,
+  & img {
+    border-radius: 0.5rem;
+  }
+
+  & blockquote {
     border-left: 0.25rem solid var(--color-accent);
     background: var(--color-accent-soft);
     padding: 0.75rem 1rem;
@@ -64,14 +87,11 @@
   }
 
   & table {
-    margin: 1.5rem 0;
     width: 100%;
     table-layout: fixed;
-    border: 0.0625rem solid var(--color-border);
     outline: 0.0625rem solid var(--color-border);
     outline-offset: -0.0625rem;
     border-spacing: 0;
-    border-radius: 0.5rem;
     background: var(--color-surface);
     overflow: hidden;
     font-size: 0.9rem;
@@ -80,7 +100,6 @@
   }
 
   & :is(th, td) {
-    border: 0.0625rem solid var(--color-border);
     padding: 0.875rem 1rem;
     text-align: left;
     vertical-align: top;
@@ -96,12 +115,12 @@
     line-height: 1.4;
   }
 
-  & tbody tr:nth-child(even) {
-    background: color-mix(in srgb, var(--color-surface) 92%, var(--color-accent-soft));
-  }
-
   & tbody tr {
     transition: background-color 0.3s;
+
+    &:nth-child(even) {
+      background: color-mix(in srgb, var(--color-surface) 92%, var(--color-accent-soft));
+    }
 
     &:hover {
       background: var(--color-accent-soft);
@@ -109,11 +128,8 @@
   }
 
   & img {
-    margin: 1.5rem 0;
     height: auto;
     max-width: 100%;
-    border: 0.0625rem solid var(--color-border);
-    border-radius: 0.5rem;
   }
 
   & hr {
@@ -134,10 +150,6 @@
     & :is(p, ul, ol) {
       font-size: 0.96rem;
       line-height: 2rem;
-    }
-
-    & table {
-      font-size: 0.9rem;
     }
 
     & p {

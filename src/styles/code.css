@@ -106,16 +106,16 @@
     padding-inline: 0.25rem;
     border-radius: 0.25rem;
     background: var(--color-accent-soft);
-  }
 
-  & .highlighted:has(+ .highlighted) {
-    border-bottom-right-radius: 0;
-    border-bottom-left-radius: 0;
-  }
+    &:has(+ .highlighted) {
+      border-bottom-right-radius: 0;
+      border-bottom-left-radius: 0;
+    }
 
-  & .highlighted + .highlighted {
-    border-top-left-radius: 0;
-    border-top-right-radius: 0;
+    & + .highlighted {
+      border-top-left-radius: 0;
+      border-top-right-radius: 0;
+    }
   }
 
   @media (width >= 48rem) {

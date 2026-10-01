@@ -22,7 +22,7 @@ const pageCount = Math.ceil(posts.length / pageSize)
                 type="button"
                 data-tag={tag}
                 data-active={tag === ''}
-                class="list-control px-2.5 py-1.5 font-medium md:px-3">
+                class="cursor-pointer rounded-full border border-border px-2.5 py-1.5 text-xs font-medium text-muted hover:border-accent data-[active=true]:border-accent data-[active=true]:bg-accent data-[active=true]:text-background md:px-3 md:text-sm">
                 {tag || 'All'}
               </button>
             ))
@@ -34,7 +34,11 @@ const pageCount = Math.ceil(posts.length / pageSize)
         <nav hidden={pageCount <= 1} class="mt-8 flex justify-center gap-2 md:mt-10">
           {
             Array.from({ length: pageCount }, (_, index) => index + 1).map(index => (
-              <button type="button" data-active={index === 1} data-page={index} class="list-control size-9 md:size-10">
+              <button
+                type="button"
+                data-active={index === 1}
+                data-page={index}
+                class="size-9 cursor-pointer rounded-full border border-border text-xs text-muted hover:border-accent data-[active=true]:border-accent data-[active=true]:bg-accent data-[active=true]:text-background md:size-10 md:text-sm">
                 {index}
               </button>
             ))
