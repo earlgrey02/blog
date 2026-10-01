@@ -1,5 +1,6 @@
 import { defineConfig } from 'astro/config'
 import type { AstroUserConfig } from 'astro'
+import chromium from '@sparticuz/chromium'
 import tailwind from '@tailwindcss/vite'
 import { transformerMetaHighlight, transformerRenderLineNumber } from '@shikijs/transformers'
 import { transformerTitle } from '@rudeigerc/shiki-transformer-title'
@@ -31,7 +32,12 @@ const config = {
         [
           rehypeMermaid,
           {
-            strategy: 'inline-svg'
+            strategy: 'inline-svg',
+            ...(process.env.VERCEL && {
+              launchOptions: {
+                executablePath: await chromium.executablePath()
+              }
+            })
           }
         ]
       ]
