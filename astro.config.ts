@@ -6,6 +6,8 @@ import { transformerMetaHighlight, transformerRenderLineNumber } from '@shikijs/
 import { transformerTitle } from '@rudeigerc/shiki-transformer-title'
 import { unified } from '@astrojs/markdown-remark'
 import rehypeMermaid from 'rehype-mermaid'
+import remarkMath from 'remark-math'
+import rehypeKatex from 'rehype-katex'
 
 const config = {
   markdown: {
@@ -28,7 +30,9 @@ const config = {
       ]
     },
     processor: unified({
+      remarkPlugins: [remarkMath],
       rehypePlugins: [
+        rehypeKatex,
         [
           rehypeMermaid,
           {

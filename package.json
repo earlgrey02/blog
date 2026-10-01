@@ -16,7 +16,8 @@
     "esbuild": true
   },
   "dependencies": {
-    "astro": "^7.3.5"
+    "astro": "^7.3.5",
+    "tocbot": "^4.36.8"
   },
   "devDependencies": {
     "@astrojs/markdown-remark": "^7.3.1",
@@ -28,11 +29,14 @@
     "eslint-plugin-astro": "^3.2.1",
     "eslint-plugin-import": "^2.32.0",
     "jiti": "^2.7.0",
+    "katex": "^0.18.10",
     "playwright": "^1.63.0",
     "prettier": "3.9.9",
     "prettier-plugin-astro": "0.14.1",
     "prettier-plugin-tailwindcss": "^0.8.1",
+    "rehype-katex": "^7.0.1",
     "rehype-mermaid": "^3.0.0",
+    "remark-math": "^6.0.0",
     "tailwindcss": "^4.3.3",
     "typescript-eslint": "^8.70.1"
   }

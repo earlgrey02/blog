@@ -45,6 +45,7 @@ html.dark {
     color: var(--color-foreground);
     color-scheme: light;
     font-family: var(--font-sans);
+    scroll-behavior: smooth;
     word-break: keep-all;
     overflow-wrap: break-word;
   }
@@ -76,53 +77,27 @@ html.dark {
     justify-content: center;
     border-radius: 9999rem;
     color: var(--color-foreground);
-  }
 
-  .icon-button:hover {
-    background-color: var(--color-accent-soft);
-    color: var(--color-accent-strong);
-  }
+    &:hover {
+      background-color: var(--color-accent-soft);
+      color: var(--color-accent-strong);
+    }
 
-  .icon-button > svg {
-    width: 1.5rem;
-    height: 1.5rem;
+    & > svg {
+      width: 1.5rem;
+      height: 1.5rem;
+    }
   }
 
   .post-tag {
     border: 0.0625rem solid var(--color-border);
     border-radius: 9999rem;
+    color: var(--color-muted);
     background-color: var(--color-tag);
     padding: 0.125rem 0.5rem;
-    color: var(--color-muted);
-  }
 
-  .list-control {
-    cursor: pointer;
-    border: 0.0625rem solid var(--color-border);
-    border-radius: 9999rem;
-    color: var(--color-muted);
-    font-size: 0.75rem;
-    line-height: 1rem;
-  }
-
-  .list-control:hover {
-    border-color: var(--color-accent);
-  }
-
-  .list-control[data-active='true'] {
-    border-color: var(--color-accent);
-    background-color: var(--color-accent);
-    color: var(--color-background);
-  }
-
-  @media (width >= 48rem) {
-    .post-tag {
+    @media (width >= 48rem) {
       padding: 0.25rem 0.625rem;
-    }
-
-    .list-control {
-      font-size: 0.875rem;
-      line-height: 1.25rem;
     }
   }
 }
