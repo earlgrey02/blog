@@ -1,0 +1,47 @@
+diff --git a/dist/index.d.mts b/dist/index.d.mts
+index c2a49827d4be2c768d5a4618d5d93e035034c07f..b932fe4f222a63c90e3cc113104581cd9001c82a 100644
+--- a/dist/index.d.mts
++++ b/dist/index.d.mts
+@@ -266,3 +266,8 @@ interface ShikiTransformerStyleToClass extends ShikiTransformer$1 {
+ declare function transformerStyleToClass(options?: TransformerStyleToClassOptions): ShikiTransformerStyleToClass;
+ //#endregion
+ export { ShikiTransformerStyleToClass, TransformerCompactLineOption, TransformerMetaHighlightOptions, TransformerMetaWordHighlightOptions, TransformerNotationDiffOptions, TransformerNotationErrorLevelOptions, TransformerNotationFocusOptions, TransformerNotationHighlightOptions, TransformerNotationMapOptions, TransformerNotationWordHighlightOptions, TransformerRemoveCommentsOptions, TransformerRenderIndentGuidesOptions, TransformerRenderWhitespaceOptions, TransformerStyleToClassOptions, createCommentNotationTransformer, findAllSubstringIndexes, parseMetaHighlightString, parseMetaHighlightWords, transformerCompactLineOptions, transformerMetaHighlight, transformerMetaWordHighlight, transformerNotationDiff, transformerNotationErrorLevel, transformerNotationFocus, transformerNotationHighlight, transformerNotationMap, transformerNotationWordHighlight, transformerRemoveComments, transformerRemoveLineBreak, transformerRemoveNotationEscape, transformerRenderIndentGuides, transformerRenderWhitespace, transformerStyleToClass };
++export interface TransformerRenderLineNumberOptions {
++  classLineNumber?: string;
++  start?: number;
++}
++export declare function transformerRenderLineNumber(options?: TransformerRenderLineNumberOptions): ShikiTransformer;
+diff --git a/dist/index.mjs b/dist/index.mjs
+index 96a7ae7583ecdf2d15a6f245b5162cafa34dc253..6984e87f51c845535b713fa2bca52ca1188593e5 100644
+--- a/dist/index.mjs
++++ b/dist/index.mjs
+@@ -742,3 +742,29 @@ function cyrb53(str, seed = 0) {
+ }
+ //#endregion
+ export { createCommentNotationTransformer, findAllSubstringIndexes, parseMetaHighlightString, parseMetaHighlightWords, transformerCompactLineOptions, transformerMetaHighlight, transformerMetaWordHighlight, transformerNotationDiff, transformerNotationErrorLevel, transformerNotationFocus, transformerNotationHighlight, transformerNotationMap, transformerNotationWordHighlight, transformerRemoveComments, transformerRemoveLineBreak, transformerRemoveNotationEscape, transformerRenderIndentGuides, transformerRenderWhitespace, transformerStyleToClass };
++
++// Backport from shikijs/shiki@02f05820c11859aa9ef2fa77cdfa774589ce2d1d
++export function transformerRenderLineNumber(options = {}) {
++    const { classLineNumber = 'line-number', start = 1 } = options;
++    return {
++        name: '@shikijs/transformers:render-line-number',
++        line (node, line) {
++            if (node.tagName === 'span') {
++                const num = start + line - 1;
++                node.children.unshift({
++                    type: 'element',
++                    tagName: 'span',
++                    properties: {
++                        class: classLineNumber
++                    },
++                    children: [
++                        {
++                            type: 'text',
++                            value: String(num)
++                        }
++                    ]
++                });
++            }
++        }
++    };
++}

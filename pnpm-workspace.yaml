@@ -1,3 +1,10 @@
 allowBuilds:
+  '@rudeigerc/shiki-transformer-title': false
   esbuild: true
   sharp: true
+
+overrides:
+  '@rudeigerc/shiki-transformer-title>@shikijs/types': ^4.4.3
+
+patchedDependencies:
+  '@shikijs/transformers@4.4.3': patches/@shikijs__transformers@4.4.3.patch

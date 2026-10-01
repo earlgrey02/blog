@@ -1,8 +1,38 @@
 import { defineConfig } from 'astro/config'
 import type { AstroUserConfig } from 'astro'
 import tailwind from '@tailwindcss/vite'
+import { transformerMetaHighlight, transformerRenderLineNumber } from '@shikijs/transformers'
+import { transformerTitle } from '@rudeigerc/shiki-transformer-title'
+import { unified } from '@astrojs/markdown-remark'
+import rehypeMermaid from 'rehype-mermaid'
 
 const config = {
+  markdown: {
+    shikiConfig: {
+      themes: {
+        light: 'github-light',
+        dark: 'github-dark'
+      },
+      transformers: [
+        transformerTitle({
+          classBlock: 'code-block',
+          classTitle: 'code-title'
+        }),
+        transformerMetaHighlight(),
+        transformerRenderLineNumber()
+      ]
+    },
+    processor: unified({
+      rehypePlugins: [
+        [
+          rehypeMermaid,
+          {
+            strategy: 'inline-svg'
+          }
+        ]
+      ]
+    })
+  },
   vite: {
     plugins: [tailwind()]
   }

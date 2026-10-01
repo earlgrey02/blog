@@ -1,0 +1,61 @@
+---
+import { render, type CollectionEntry } from 'astro:content'
+import '../../styles/post.css'
+import '../../styles/code.css'
+import '../../styles/diagram.css'
+import Layout from '../../layouts/Layout.astro'
+import { getPosts } from '../../lib/post.ts'
+
+interface Props {
+  post: CollectionEntry<'post'>
+}
+
+const { post } = Astro.props
+const { title, description, date, tags } = post.data
+const { Content } = await render(post)
+
+export const getStaticPaths = async () => {
+  const posts = await getPosts()
+
+  return posts.map(post => ({
+    params: {
+      id: post.id
+    },
+    props: { post }
+  }))
+}
+---
+
+<Layout title={title} description={description}>
+  <main id="main" class="min-h-screen">
+    <article class="mx-auto max-w-3xl px-5 pt-10 pb-14 md:pt-16 md:pb-20">
+      <a href="/posts" class="icon-button" title="전체 글">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round">
+          <path d="M8 6h13M8 12h13M8 18h13"></path>
+          <path d="M3 6h.01M3 12h.01M3 18h.01" stroke-width="3"></path>
+        </svg>
+      </a>
+      <header class="mt-8 border-b border-border pb-7 md:mt-10 md:pb-8">
+        <div class="mb-4 flex flex-col gap-2.5 sm:flex-row sm:items-center md:mb-5 md:gap-3">
+          <time datetime={date.toISOString()} class="text-xs font-medium text-subtle md:text-sm">
+            {date.toISOString().slice(0, 10)}
+          </time>
+          <div class="flex flex-wrap gap-1.5 text-xs font-medium md:gap-2 md:text-sm">
+            {
+              tags.map(tag => (
+                <a href={`/posts?tag=${tag}`} class="post-tag hover:text-accent">
+                  {tag}
+                </a>
+              ))
+            }
+          </div>
+        </div>
+        <h1 class="text-2xl leading-tight font-semibold tracking-tight md:text-4xl">{title}</h1>
+        <p class="mt-4 text-sm leading-7 text-muted md:mt-5 md:text-lg md:leading-8">{description}</p>
+      </header>
+      <div class="post-content mt-8 min-w-0 md:mt-10">
+        <Content />
+      </div>
+    </article>
+  </main>
+</Layout>

@@ -1,0 +1,166 @@
+.post-content svg[id^='mermaid-'] {
+  display: block;
+  width: 100% !important;
+  max-width: none !important;
+  height: auto;
+  margin-block: 1.5rem;
+  overflow: visible;
+  overflow-wrap: normal;
+  word-break: normal;
+  border: 0.0625rem solid var(--color-border);
+  border-radius: 0.75rem;
+  background: linear-gradient(180deg, var(--color-surface), var(--color-surface-strong));
+  padding: 1rem;
+  box-shadow: 0 1.125rem 2.8125rem rgb(31 38 43 / 8%);
+  font-family: var(--font-sans) !important;
+  font-size: 0.8125rem !important;
+
+  & :is(text, tspan, foreignObject, foreignObject *, .label) {
+    font-family: var(--font-sans) !important;
+    font-size: 0.8125rem !important;
+  }
+
+  & :is(text, tspan, .labelText, .messageText, .loopText, .noteText) {
+    fill: var(--color-foreground) !important;
+    stroke: none !important;
+  }
+
+  & :is(foreignObject, foreignObject *, .nodeLabel, .edgeLabel, .label) {
+    color: var(--color-foreground) !important;
+  }
+
+  & p {
+    margin: 0;
+    font-size: inherit;
+    line-height: inherit;
+  }
+
+  & :is(.node, .cluster) :is(rect, circle, ellipse, polygon, path),
+  & :is(.entityBox, .attributeBoxEven, .attributeBoxOdd) {
+    fill: var(--color-surface-strong) !important;
+    stroke: var(--color-border-strong) !important;
+    stroke-width: 0.078125rem !important;
+  }
+
+  & :is(.actor, .labelBox, .note, .activation0, .activation1, .activation2) {
+    fill: var(--color-accent-soft) !important;
+    stroke: var(--color-accent) !important;
+    stroke-width: 0.09375rem !important;
+  }
+
+  & .note {
+    stroke: var(--color-border-strong) !important;
+    stroke-width: 0.078125rem !important;
+  }
+
+  & :is(.activation0, .activation1, .activation2) {
+    fill: var(--color-surface-strong) !important;
+  }
+
+  & :is(.messageText, .loopText, .labelText, .noteText) {
+    font-weight: 500 !important;
+  }
+
+  & :is(.edgeLabel, .edgeLabel p, .edgeLabel span) {
+    background-color: var(--color-surface) !important;
+  }
+
+  & :is(.labelBkg, .edgeLabel rect) {
+    fill: var(--color-surface) !important;
+  }
+
+  & :is(.flowchart-link, .loopLine, .messageLine0, .messageLine1) {
+    stroke: var(--color-accent-strong) !important;
+    stroke-width: 0.109375rem !important;
+  }
+
+  & .actor-line {
+    stroke: var(--color-border-strong) !important;
+  }
+
+  & marker :is(path, polygon, circle),
+  & .marker {
+    fill: var(--color-accent-strong) !important;
+    stroke: var(--color-accent-strong) !important;
+  }
+
+  &[aria-roledescription='er'] {
+    & .relationshipLine {
+      stroke: var(--color-accent-strong) !important;
+    }
+    & marker :is(path, circle) {
+      fill: none !important;
+    }
+  }
+
+  & rect.rect {
+    rx: 0.25rem;
+    ry: 0.25rem;
+    fill: var(--color-accent-soft) !important;
+  }
+
+  &[aria-roledescription='xychart'] {
+    & .background {
+      fill: transparent !important;
+    }
+
+    & [class$='-axis'] path {
+      stroke: var(--color-border-strong) !important;
+      stroke-width: 0.0625rem !important;
+    }
+
+    & [class$='-axis'] .label text {
+      fill: var(--color-muted) !important;
+    }
+
+    & .chart-title text {
+      font-size: 1rem !important;
+      font-weight: 600 !important;
+    }
+
+    & [class$='-axis'] .title text {
+      font-weight: 500 !important;
+    }
+
+    & .plot > g {
+      --plot-color: var(--color-accent);
+    }
+
+    & .plot > g:nth-child(3n + 2) {
+      --plot-color: var(--color-highlight);
+    }
+
+    & .plot > g:nth-child(3n + 3) {
+      --plot-color: var(--color-muted);
+    }
+
+    & .plot [class^='line-plot-'] > path {
+      stroke: var(--plot-color) !important;
+      stroke-width: 0.15625rem !important;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    & .plot [class^='bar-plot-'] > rect {
+      fill: var(--plot-color) !important;
+      stroke: none !important;
+    }
+  }
+
+  .dark & {
+    box-shadow: 0 1.125rem 2.8125rem rgb(0 0 0 / 18%);
+
+    & :is(.actor, .labelBox) {
+      fill: var(--color-tag) !important;
+    }
+
+    & :is(.node, .cluster) :is(rect, circle, ellipse, polygon, path) {
+      fill: var(--color-surface) !important;
+    }
+  }
+
+  @media (width >= 48rem) {
+    margin-block: 1.75rem;
+    padding: 1.25rem;
+  }
+}
