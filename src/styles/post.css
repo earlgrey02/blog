@@ -156,6 +156,14 @@ html:has(.post-toc) {
       margin-top: 1.25rem;
     }
   }
+
+  & .katex-display:not(svg *) {
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-block: 0.25rem;
+  }
+}
+
 .post-toc {
   display: none;
 
