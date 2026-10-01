@@ -1,0 +1,147 @@
+.post-content {
+  & :is(h1, h2, h3, h4) {
+    margin: 2.25rem 0 1rem;
+    font-weight: 600;
+    letter-spacing: -0.025em;
+    color: var(--color-foreground);
+    scroll-margin-top: 6rem;
+  }
+
+  & h1 {
+    border-top: 0.0625rem solid var(--color-border);
+    padding-top: 2rem;
+    font-size: 1.25rem;
+    line-height: 1.75rem;
+  }
+
+  & :is(h2, h3) {
+    font-size: 1.125rem;
+    line-height: 1.75rem;
+  }
+
+  & :is(p, ul, ol) {
+    margin-top: 1rem;
+    font-size: 0.85rem;
+    line-height: 1.75rem;
+  }
+
+  & a {
+    color: var(--color-accent);
+    font-weight: 500;
+    text-decoration: underline;
+    text-underline-offset: 0.25rem;
+
+    &:hover {
+      color: var(--color-accent-strong);
+    }
+  }
+
+  & :is(ul, ol) {
+    padding-left: 1.25rem;
+  }
+
+  & li + li {
+    margin-top: 0.375rem;
+  }
+
+  & ul {
+    list-style: disc;
+  }
+
+  & ol {
+    list-style: decimal;
+  }
+
+  & blockquote {
+    margin: 1.5rem 0;
+    border-left: 0.25rem solid var(--color-accent);
+    background: var(--color-accent-soft);
+    padding: 0.75rem 1rem;
+    color: var(--color-muted);
+    & p:first-child {
+      margin-top: 0;
+    }
+  }
+
+  & table {
+    margin: 1.5rem 0;
+    width: 100%;
+    table-layout: fixed;
+    border: 0.0625rem solid var(--color-border);
+    outline: 0.0625rem solid var(--color-border);
+    outline-offset: -0.0625rem;
+    border-spacing: 0;
+    border-radius: 0.5rem;
+    background: var(--color-surface);
+    overflow: hidden;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+  }
+
+  & :is(th, td) {
+    border: 0.0625rem solid var(--color-border);
+    padding: 0.875rem 1rem;
+    text-align: left;
+    vertical-align: top;
+    &:first-child {
+      font-weight: 700;
+    }
+  }
+
+  & th {
+    background: var(--color-accent-soft);
+    color: var(--color-foreground);
+    font-weight: 600;
+    line-height: 1.4;
+  }
+
+  & tbody tr:nth-child(even) {
+    background: color-mix(in srgb, var(--color-surface) 92%, var(--color-accent-soft));
+  }
+
+  & tbody tr {
+    transition: background-color 0.3s;
+
+    &:hover {
+      background: var(--color-accent-soft);
+    }
+  }
+
+  & img {
+    margin: 1.5rem 0;
+    height: auto;
+    max-width: 100%;
+    border: 0.0625rem solid var(--color-border);
+    border-radius: 0.5rem;
+  }
+
+  & hr {
+    margin: 2.5rem 0;
+    border-color: var(--color-border);
+  }
+
+  @media (width >= 48rem) {
+    & h1 {
+      font-size: 1.5rem;
+      line-height: 2rem;
+    }
+
+    & :is(h2, h3) {
+      font-size: 1.25rem;
+    }
+
+    & :is(p, ul, ol) {
+      font-size: 0.96rem;
+      line-height: 2rem;
+    }
+
+    & table {
+      font-size: 0.9rem;
+    }
+
+    & p {
+      margin-top: 1.25rem;
+    }
+  }
+}

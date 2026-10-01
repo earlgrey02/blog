@@ -59,7 +59,8 @@ html.dark {
     color: var(--color-accent-strong);
   }
 
-  a, button {
+  a,
+  button {
     transition-property: color, background-color, border-color, text-decoration-color;
     transition-duration: 0.3s;
   }
