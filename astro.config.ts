@@ -8,6 +8,10 @@ import rehypeMermaid from 'rehype-mermaid'
 
 const config = {
   markdown: {
+    syntaxHighlight: {
+      type: 'shiki',
+      excludeLangs: ['mermaid']
+    },
     shikiConfig: {
       themes: {
         light: 'github-light',
