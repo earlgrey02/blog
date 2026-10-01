@@ -1,0 +1,104 @@
+---
+import PostItem from '../../components/PostItem.astro'
+import Layout from '../../layouts/Layout.astro'
+import { getPosts } from '../../lib/post.ts'
+
+const posts = await getPosts()
+const tags = new Set(posts.flatMap(post => post.data.tags))
+const pageSize = 5
+const pageCount = Math.ceil(posts.length / pageSize)
+---
+
+<Layout title="Posts | earlgrey02의 블로그">
+  <main id="main" class="min-h-screen">
+    <section class="mx-auto max-w-5xl px-5 pt-10 pb-12 md:pt-16 md:pb-20">
+      <p class="mb-4 text-sm font-medium text-highlight md:mb-5 md:text-base">Posts</p>
+      <h1 class="text-2xl font-semibold tracking-tight md:text-4xl">전체 글</h1>
+      <div id="post-list" data-page-size={pageSize}>
+        <div class="mt-8 flex flex-wrap gap-2 md:mt-10">
+          {
+            ['', ...tags].map(tag => (
+              <button
+                type="button"
+                data-tag={tag}
+                data-active={tag === ''}
+                class="list-control px-2.5 py-1.5 font-medium md:px-3">
+                {tag || 'All'}
+              </button>
+            ))
+          }
+        </div>
+        <div class="mt-9 divide-y divide-border border-y border-border md:mt-12">
+          {posts.map(post => <PostItem post={post} view="wide" />)}
+        </div>
+        <nav hidden={pageCount <= 1} class="mt-8 flex justify-center gap-2 md:mt-10">
+          {
+            Array.from({ length: pageCount }, (_, index) => index + 1).map(index => (
+              <button type="button" data-active={index === 1} data-page={index} class="list-control size-9 md:size-10">
+                {index}
+              </button>
+            ))
+          }
+        </nav>
+      </div>
+    </section>
+  </main>
+</Layout>
+
+<script>
+  const list = document.querySelector<HTMLElement>('#post-list')!
+  const pageSize = Number(list.dataset.pageSize)
+
+  const posts = [...list.querySelectorAll<HTMLElement>('[data-post]')]
+  const filters = list.querySelectorAll<HTMLButtonElement>('[data-tag]')
+  const pages = list.querySelectorAll<HTMLButtonElement>('[data-page]')
+  const pagination = list.querySelector<HTMLElement>('nav')!
+  const empty = list.querySelector<HTMLElement>('#empty')!
+
+  const render = () => {
+    const params = new URLSearchParams(location.search)
+    const tag = params.get('tag')
+    const matches = posts.filter(post => !tag || JSON.parse(post.dataset.tags!).includes(tag))
+
+    const pageCount = Math.max(1, Math.ceil(matches.length / pageSize))
+    const page = Math.min(Math.max(Number(params.get('page')) || 1, 1), pageCount)
+
+    posts.forEach(post => (post.hidden = true))
+    matches.slice((page - 1) * pageSize, page * pageSize).forEach(post => (post.hidden = false))
+
+    filters.forEach(button => (button.dataset.active = String(button.dataset.tag === (tag ?? ''))))
+
+    pages.forEach(button => {
+      const current = Number(button.dataset.page)
+
+      button.hidden = current > pageCount
+      button.dataset.active = String(current === page)
+    })
+
+    pagination.hidden = pageCount <= 1
+    empty.hidden = matches.length > 0
+  }
+
+  list.addEventListener('click', event => {
+    const button = (event.target as Element).closest<HTMLButtonElement>('[data-tag], [data-page]')
+    if (!button) return
+
+    const params = new URLSearchParams(location.search)
+
+    if (button.dataset.tag !== undefined) {
+      button.dataset.tag ? params.set('tag', button.dataset.tag) : params.delete('tag')
+      params.delete('page')
+    }
+
+    if (button.dataset.page) {
+      Number(button.dataset.page) > 1 ? params.set('page', button.dataset.page) : params.delete('page')
+    }
+
+    history.pushState(null, '', `${location.pathname}${params.size ? `?${params}` : ''}`)
+    render()
+  })
+
+  window.addEventListener('popstate', render)
+
+  render()
+</script>
