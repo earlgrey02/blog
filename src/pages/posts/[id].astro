@@ -1,5 +1,6 @@
 ---
 import { render, type CollectionEntry } from 'astro:content'
+import 'katex/dist/katex.min.css'
 import '../../styles/post.css'
 import '../../styles/code.css'
 import '../../styles/diagram.css'
@@ -53,9 +54,40 @@ export const getStaticPaths = async () => {
         <h1 class="text-2xl leading-tight font-semibold tracking-tight md:text-4xl">{title}</h1>
         <p class="mt-4 text-sm leading-7 text-muted md:mt-5 md:text-lg md:leading-8">{description}</p>
       </header>
+      <aside id="post-toc" class="post-toc" hidden>
+        <nav></nav>
+      </aside>
       <div class="post-content mt-8 min-w-0 md:mt-10">
         <Content />
       </div>
     </article>
   </main>
 </Layout>
+
+<script>
+  import tocbot from 'tocbot'
+
+  const content = document.querySelector<HTMLElement>('.post-content')
+  const toc = document.querySelector<HTMLElement>('#post-toc')
+
+  if (content && toc) {
+    tocbot.init({
+      tocSelector: '#post-toc nav',
+      contentSelector: '.post-content',
+      headingSelector: 'h1, h2, h3',
+      activeLinkClass: 'is-active',
+      headingsOffset: 96,
+      scrollSmooth: true,
+      scrollSmoothDuration: 300,
+      scrollSmoothOffset: -96,
+      onClick: event => {
+        event.preventDefault()
+        const link = event.currentTarget as HTMLAnchorElement
+        toc.querySelector('.is-active')?.classList.remove('is-active')
+        link.classList.add('is-active')
+        history.replaceState(null, '', link.hash)
+      }
+    })
+    toc.hidden = !toc.querySelector('a')
+  }
+</script>
