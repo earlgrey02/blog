@@ -16,7 +16,8 @@
     "esbuild": true
   },
   "dependencies": {
-    "astro": "^7.3.5"
+    "astro": "^7.3.5",
+    "tocbot": "^4.36.8"
   },
   "devDependencies": {
     "@astrojs/markdown-remark": "^7.3.1",
