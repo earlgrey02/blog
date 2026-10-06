@@ -77,12 +77,18 @@ html:has(.post-toc) {
   }
 
   & blockquote {
-    border-left: 0.25rem solid var(--color-accent);
-    background: var(--color-accent-soft);
-    padding: 0.75rem 1rem;
-    color: var(--color-muted);
-    & p:first-child {
+    border-left: 0.1875rem solid var(--color-accent);
+    border-radius: 0 0.5rem 0.5rem 0;
+    background: color-mix(in srgb, var(--color-accent-soft) 65%, var(--color-surface));
+    padding: 1rem 1.25rem;
+    color: color-mix(in srgb, var(--color-foreground) 80%, var(--color-muted));
+
+    & > :first-child {
       margin-top: 0;
+    }
+
+    & > :last-child {
+      margin-bottom: 0;
     }
   }
 

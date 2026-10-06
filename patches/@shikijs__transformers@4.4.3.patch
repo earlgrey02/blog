@@ -15,7 +15,7 @@ diff --git a/dist/index.mjs b/dist/index.mjs
 index 96a7ae7583ecdf2d15a6f245b5162cafa34dc253..6984e87f51c845535b713fa2bca52ca1188593e5 100644
 --- a/dist/index.mjs
 +++ b/dist/index.mjs
-@@ -742,3 +742,29 @@ function cyrb53(str, seed = 0) {
+@@ -742,3 +742,30 @@ function cyrb53(str, seed = 0) {
  }
  //#endregion
  export { createCommentNotationTransformer, findAllSubstringIndexes, parseMetaHighlightString, parseMetaHighlightWords, transformerCompactLineOptions, transformerMetaHighlight, transformerMetaWordHighlight, transformerNotationDiff, transformerNotationErrorLevel, transformerNotationFocus, transformerNotationHighlight, transformerNotationMap, transformerNotationWordHighlight, transformerRemoveComments, transformerRemoveLineBreak, transformerRemoveNotationEscape, transformerRenderIndentGuides, transformerRenderWhitespace, transformerStyleToClass };
@@ -26,6 +26,7 @@ index 96a7ae7583ecdf2d15a6f245b5162cafa34dc253..6984e87f51c845535b713fa2bca52ca1
 +    return {
 +        name: '@shikijs/transformers:render-line-number',
 +        line (node, line) {
++            if (!/(?:^|\s)showLineNumbers(?:\s|$)/.test(this.options.meta?.__raw ?? '')) return;
 +            if (node.tagName === 'span') {
 +                const num = start + line - 1;
 +                node.children.unshift({

@@ -8,7 +8,7 @@ overrides:
   '@rudeigerc/shiki-transformer-title>@shikijs/types': ^4.4.3
 
 patchedDependencies:
-  '@shikijs/transformers@4.4.3': 38699590400c24bdaef45339e4fdaed54b2934f12e4d05e2d6f2236e43472156
+  '@shikijs/transformers@4.4.3': a6f7b4709db535f11bc99f663d8ee8d98c83691d24688837091642812b68ee28
 
 importers:
 
@@ -29,7 +29,7 @@ importers:
         version: 0.2.1
       '@shikijs/transformers':
         specifier: ^4.4.3
-        version: 4.4.3(patch_hash=38699590400c24bdaef45339e4fdaed54b2934f12e4d05e2d6f2236e43472156)
+        version: 4.4.3(patch_hash=a6f7b4709db535f11bc99f663d8ee8d98c83691d24688837091642812b68ee28)
       '@sparticuz/chromium':
         specifier: ^153.0.0
         version: 153.0.0
@@ -4192,7 +4192,7 @@ snapshots:
     dependencies:
       '@shikijs/types': 4.4.3
 
-  '@shikijs/transformers@4.4.3(patch_hash=38699590400c24bdaef45339e4fdaed54b2934f12e4d05e2d6f2236e43472156)':
+  '@shikijs/transformers@4.4.3(patch_hash=a6f7b4709db535f11bc99f663d8ee8d98c83691d24688837091642812b68ee28)':
     dependencies:
       '@shikijs/core': 4.4.3
       '@shikijs/types': 4.4.3
